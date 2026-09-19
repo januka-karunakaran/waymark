@@ -1,0 +1,12 @@
+{
+  "name": "Waymark 2100",
+  "short_name": "Waymark",
+  "description": "Multimodal planetary transit navigator",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070a0f",
+  "theme_color": "#070a0f",
+  "icons": []
+}
