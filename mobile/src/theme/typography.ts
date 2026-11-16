@@ -6,6 +6,48 @@ import { TextStyle } from 'react-native';
  * Strict enforcement of tabular figures for real-time telemetry readouts.
  */
 
+export const fontSizes = {
+  caption: 11,
+  xs: 12,
+  sm: 13,
+  md: 14,
+  lg: 16,
+  xl: 18,
+  xxl: 20,
+  displaySm: 24,
+  displayMd: 28,
+  displayLg: 36
+} as const;
+
+export const fontWeights = {
+  regular: '400',
+  medium: '500',
+  semibold: '600',
+  bold: '700'
+} as const;
+
+export const lineHeights = {
+  caption: 14,
+  xs: 16,
+  sm: 18,
+  md: 20,
+  lg: 24,
+  xl: 24,
+  xxl: 28,
+  displaySm: 32,
+  displayMd: 36,
+  displayLg: 44
+} as const;
+
+export const letterSpacings = {
+  tight: -0.8,
+  snug: -0.5,
+  compressed: -0.3,
+  normal: 0,
+  loose: 0.8,
+  extraLoose: 0.9
+} as const;
+
 export const typography = {
   fontFamily: {
     regular: 'System',
@@ -14,79 +56,85 @@ export const typography = {
     bold: 'System'
   },
 
+  fontSize: fontSizes,
+  fontWeight: fontWeights,
+  lineHeight: lineHeights,
+  letterSpacing: letterSpacings,
+
   styles: {
     displayLg: {
-      fontSize: 36,
-      lineHeight: 44,
-      fontWeight: '700',
-      letterSpacing: -0.8
+      fontSize: fontSizes.displayLg,
+      lineHeight: lineHeights.displayLg,
+      fontWeight: fontWeights.bold,
+      letterSpacing: letterSpacings.tight
     } as TextStyle,
 
     headlineXl: {
-      fontSize: 28,
-      lineHeight: 36,
-      fontWeight: '600',
-      letterSpacing: -0.5
+      fontSize: fontSizes.displayMd,
+      lineHeight: lineHeights.displayMd,
+      fontWeight: fontWeights.semibold,
+      letterSpacing: letterSpacings.snug
     } as TextStyle,
 
     headlineLg: {
-      fontSize: 24,
-      lineHeight: 32,
-      fontWeight: '600',
-      letterSpacing: -0.3
+      fontSize: fontSizes.displaySm,
+      lineHeight: lineHeights.displaySm,
+      fontWeight: fontWeights.semibold,
+      letterSpacing: letterSpacings.compressed
     } as TextStyle,
 
     headlineMd: {
-      fontSize: 20,
-      lineHeight: 28,
-      fontWeight: '600'
+      fontSize: fontSizes.xxl,
+      lineHeight: lineHeights.xxl,
+      fontWeight: fontWeights.semibold
     } as TextStyle,
 
     titleSm: {
-      fontSize: 18,
-      lineHeight: 24,
-      fontWeight: '500'
+      fontSize: fontSizes.xl,
+      lineHeight: lineHeights.xl,
+      fontWeight: fontWeights.medium
     } as TextStyle,
 
     bodyLg: {
-      fontSize: 16,
-      lineHeight: 24,
-      fontWeight: '400'
+      fontSize: fontSizes.lg,
+      lineHeight: lineHeights.lg,
+      fontWeight: fontWeights.regular
     } as TextStyle,
 
     bodyMd: {
-      fontSize: 14,
-      lineHeight: 20,
-      fontWeight: '400'
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
+      fontWeight: fontWeights.regular
     } as TextStyle,
 
     bodySm: {
-      fontSize: 12,
-      lineHeight: 16,
-      fontWeight: '400'
+      fontSize: fontSizes.xs,
+      lineHeight: lineHeights.xs,
+      fontWeight: fontWeights.regular
     } as TextStyle,
 
     labelMonoMd: {
-      fontSize: 13,
-      lineHeight: 18,
-      fontWeight: '600',
-      letterSpacing: 0.8,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      fontWeight: fontWeights.semibold,
+      letterSpacing: letterSpacings.loose,
       textTransform: 'uppercase'
     } as TextStyle,
 
     labelMonoSm: {
-      fontSize: 11,
-      lineHeight: 14,
-      fontWeight: '600',
-      letterSpacing: 0.9,
+      fontSize: fontSizes.caption,
+      lineHeight: lineHeights.caption,
+      fontWeight: fontWeights.semibold,
+      letterSpacing: letterSpacings.extraLoose,
       textTransform: 'uppercase'
     } as TextStyle,
 
     telemetryNumber: {
       fontVariant: ['tabular-nums'],
-      fontWeight: '700'
+      fontWeight: fontWeights.bold
     } as TextStyle
   }
 } as const;
 
 export type ThemeTypography = typeof typography;
+export type TypographyStyles = typeof typography.styles;
