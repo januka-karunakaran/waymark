@@ -8,6 +8,7 @@ interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: (error: Error, reset: () => void) => ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  testID?: string;
 }
 
 interface ErrorBoundaryState {
@@ -52,13 +53,15 @@ export class ErrorBoundary extends Component<
       }
 
       return (
-        <View style={styles.container} accessibilityRole="alert" accessible={true}>
+        <View style={styles.container} testID={this.props.testID}>
           <View style={styles.content}>
             <View style={styles.iconBadge}>
               <AlertOctagon size={36} color={theme.colors.statusCritical} />
             </View>
-            <Text style={styles.title}>System Avionics Fault</Text>
-            <Text style={styles.message}>
+            <Text style={styles.title} accessibilityRole="header">
+              System Avionics Fault
+            </Text>
+            <Text style={styles.message} accessibilityRole="alert">
               A runtime error occurred in the Waymark UI system. Telemetry stream has been isolated for commuter safety.
             </Text>
             <Pressable
@@ -69,6 +72,7 @@ export class ErrorBoundary extends Component<
               onPress={this.handleReset}
               accessibilityRole="button"
               accessibilityLabel="Reboot avionics UI"
+              testID={this.props.testID ? `${this.props.testID}-reboot` : undefined}
             >
               <RotateCcw size={16} color={theme.colors.abyssVoid} />
               <Text style={styles.resetButtonText}>Reboot Avionics</Text>
