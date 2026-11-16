@@ -15,6 +15,7 @@ export interface ErrorStateProps {
   onRetry?: () => void;
   retryLabel?: string;
   style?: ViewStyle;
+  testID?: string;
 }
 
 export const ErrorState: React.FC<ErrorStateProps> = ({
@@ -22,28 +23,38 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   message = 'An unexpected error occurred while communicating with the transit network.',
   onRetry,
   retryLabel = 'Retry Transmission',
-  style
+  style,
+  testID
 }) => {
   return (
-    <View
-      style={[styles.container, style]}
-      accessibilityRole="alert"
-      accessible={true}
-    >
+    <View style={[styles.container, style]} testID={testID}>
       <View style={styles.iconContainer}>
         <AlertTriangle size={32} color={theme.colors.statusCritical} />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
-      {onRetry && (
+      <Text
+        style={styles.title}
+        accessibilityRole="header"
+        testID={testID ? `${testID}-title` : undefined}
+      >
+        {title}
+      </Text>
+      <Text
+        style={styles.message}
+        accessibilityRole="alert"
+        testID={testID ? `${testID}-message` : undefined}
+      >
+        {message}
+      </Text>
+      {Boolean(onRetry) && (
         <Pressable
           style={({ pressed }) => [
             styles.retryButton,
             pressed && styles.retryButtonPressed
           ]}
-          onPress={onRetry}
+          onPress={() => onRetry?.()}
           accessibilityRole="button"
           accessibilityLabel={retryLabel}
+          testID={testID ? `${testID}-retry` : undefined}
         >
           <RotateCcw size={16} color={theme.colors.abyssVoid} />
           <Text style={styles.retryButtonText}>{retryLabel}</Text>

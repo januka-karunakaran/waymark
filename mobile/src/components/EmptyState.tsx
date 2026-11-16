@@ -15,6 +15,7 @@ export interface EmptyStateProps {
   actionLabel?: string;
   onAction?: () => void;
   style?: ViewStyle;
+  testID?: string;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
@@ -22,24 +23,30 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   message = 'No active routes match your telemetry filters. Try selecting a different destination node.',
   actionLabel,
   onAction,
-  style
+  style,
+  testID
 }) => {
   return (
-    <View style={[styles.container, style]} accessible={true}>
+    <View style={[styles.container, style]} testID={testID}>
       <View style={styles.iconContainer}>
         <Compass size={32} color={theme.colors.beaconGold} />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
-      {Boolean(actionLabel && onAction) && (
+      <Text style={styles.title} testID={testID ? `${testID}-title` : undefined}>
+        {title}
+      </Text>
+      <Text style={styles.message} testID={testID ? `${testID}-message` : undefined}>
+        {message}
+      </Text>
+      {Boolean(actionLabel) && (
         <Pressable
           style={({ pressed }) => [
             styles.actionButton,
             pressed && styles.actionButtonPressed
           ]}
-          onPress={onAction}
+          onPress={() => onAction?.()}
           accessibilityRole="button"
           accessibilityLabel={actionLabel}
+          testID={testID ? `${testID}-action` : undefined}
         >
           <Text style={styles.actionButtonText}>{actionLabel}</Text>
         </Pressable>
