@@ -24,4 +24,28 @@ describe('EmptyState Component', () => {
     fireEvent.press(actionBtn);
     expect(onActionMock).toHaveBeenCalledTimes(1);
   });
+
+  it('renders action button when actionLabel is provided without onAction and handles press gracefully', () => {
+    const { getByText, getByRole } = render(
+      <EmptyState actionLabel="Select Destination" />
+    );
+    const actionBtn = getByRole('button');
+    expect(getByText('Select Destination')).toBeTruthy();
+    expect(() => fireEvent.press(actionBtn)).not.toThrow();
+  });
+
+  it('supports custom testID for component and sub-elements', () => {
+    const { getByTestId } = render(
+      <EmptyState
+        testID="custom-empty"
+        title="Offline Grid"
+        message="Grid unreachable"
+        actionLabel="Re-scan"
+      />
+    );
+    expect(getByTestId('custom-empty')).toBeTruthy();
+    expect(getByTestId('custom-empty-title')).toBeTruthy();
+    expect(getByTestId('custom-empty-message')).toBeTruthy();
+    expect(getByTestId('custom-empty-action')).toBeTruthy();
+  });
 });
