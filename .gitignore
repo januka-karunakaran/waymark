@@ -1,4 +1,26 @@
 node_modules/
 dist/
+
+# Environment variable files
 .env
 .env.*
+!.env.example
+.env.local
+.env.*.local
+
+# Mobile Expo
+.expo/
+mobile/.expo/
+mobile/dist/
+mobile/coverage/
+
+# Mobile keystores & signing
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Logs
+npm-debug.*
