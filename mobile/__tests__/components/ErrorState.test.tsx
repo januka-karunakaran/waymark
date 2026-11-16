@@ -29,4 +29,20 @@ describe('ErrorState Component', () => {
     fireEvent.press(retryButton);
     expect(onRetryMock).toHaveBeenCalledTimes(1);
   });
+
+  it('supports custom testID for component and sub-elements', () => {
+    const onRetryMock = jest.fn();
+    const { getByTestId } = render(
+      <ErrorState
+        testID="custom-error"
+        title="Vector Anomaly"
+        message="Transmission failed"
+        onRetry={onRetryMock}
+      />
+    );
+    expect(getByTestId('custom-error')).toBeTruthy();
+    expect(getByTestId('custom-error-title')).toBeTruthy();
+    expect(getByTestId('custom-error-message')).toBeTruthy();
+    expect(getByTestId('custom-error-retry')).toBeTruthy();
+  });
 });

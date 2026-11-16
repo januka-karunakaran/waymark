@@ -13,13 +13,15 @@ export interface LoadingIndicatorProps {
   size?: 'small' | 'large';
   fullscreen?: boolean;
   style?: ViewStyle;
+  testID?: string;
 }
 
 export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   message = 'Synchronizing transit telemetry...',
   size = 'large',
   fullscreen = false,
-  style
+  style,
+  testID
 }) => {
   return (
     <View
@@ -31,9 +33,14 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
       accessibilityRole="progressbar"
       accessibilityLabel={message}
       accessible={true}
+      testID={testID}
     >
       <ActivityIndicator size={size} color={theme.colors.beaconGold} />
-      {Boolean(message) && <Text style={styles.message}>{message}</Text>}
+      {Boolean(message) && (
+        <Text style={styles.message} testID={testID ? `${testID}-message` : undefined}>
+          {message}
+        </Text>
+      )}
     </View>
   );
 };
