@@ -6,7 +6,9 @@ import {
   ViewStyle,
   TextStyle,
   StyleSheet,
-  GestureResponderEvent
+  GestureResponderEvent,
+  ActivityIndicator,
+  View
 } from 'react-native';
 import { AppText } from '../typography';
 import {
@@ -46,6 +48,17 @@ export interface AppButtonProps extends Omit<PressableProps, 'style' | 'children
    * @default 'md'
    */
   size?: AppButtonSize;
+
+  /**
+   * Loading state: displays ActivityIndicator, prevents interaction, and sets accessibility busy.
+   * @default false
+   */
+  loading?: boolean;
+
+  /**
+   * Optional text displayed alongside the ActivityIndicator during loading.
+   */
+  loadingText?: string;
 
   /**
    * Callback fired on button press.
@@ -203,16 +216,16 @@ function getVariantColors(
 
 /**
  * AppButton — Reusable, accessible, mobile-first button component
- * supporting Waymark 2100 design token variants and responsive sizes.
- *
- * Integrates Waymark design tokens, AppText typography,
- * minimum touch targets (>= 44x44), and screen-reader accessibility.
+ * supporting Waymark 2100 design token variants, responsive sizes,
+ * and controlled loading/interaction states.
  */
 export const AppButton: React.FC<AppButtonProps> = ({
   title,
   label,
   variant = 'primary',
   size = 'md',
+  loading = false,
+  loadingText,
   onPress,
   disabled = false,
   themeMode,
@@ -232,8 +245,11 @@ export const AppButton: React.FC<AppButtonProps> = ({
   const sizeConfig = getSizeConfig(size, activeTheme);
   const variantColors = getVariantColors(variant, disabled, activeTheme);
 
+  // Interaction is disabled if either disabled or loading is true
+  const isInteractionDisabled = disabled || loading;
+
   const handlePress = (event: GestureResponderEvent) => {
-    if (disabled) {
+    if (isInteractionDisabled) {
       return;
     }
     onPress?.(event);
@@ -254,7 +270,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
   };
 
   const getContainerStyle = (pressed: boolean): StyleProp<ViewStyle> => {
-    const feedbackStyle: ViewStyle = pressed && !disabled
+    const feedbackStyle: ViewStyle = pressed && !isInteractionDisabled
       ? {
           opacity: 0.85,
           transform: [{ scale: 0.98 }],
@@ -269,29 +285,71 @@ export const AppButton: React.FC<AppButtonProps> = ({
     return [baseContainerStyle, feedbackStyle, customStyle];
   };
 
+  const effectiveAccessibilityLabel =
+    accessibilityLabel ?? (loading ? (loadingText ?? buttonText) : buttonText);
+
   return (
     <Pressable
       onPress={handlePress}
-      disabled={disabled}
+      disabled={isInteractionDisabled}
       accessibilityRole={accessibilityRole}
-      accessibilityState={{ disabled: Boolean(disabled), ...accessibilityState }}
-      accessibilityLabel={accessibilityLabel ?? buttonText}
+      accessibilityState={{
+        ...accessibilityState,
+        disabled: isInteractionDisabled,
+        busy: loading
+      }}
+      accessibilityLabel={effectiveAccessibilityLabel}
       testID={testID}
       style={({ pressed }) => getContainerStyle(pressed)}
       {...restProps}
     >
-      {children ?? (
-        <AppText
-          variant={sizeConfig.textVariant}
-          weight="bold"
-          style={StyleSheet.flatten([
-            { color: variantColors.textColor, textAlign: 'center' },
-            textStyle
-          ])}
-        >
-          {buttonText}
-        </AppText>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator
+            size="small"
+            color={variantColors.textColor}
+            testID={testID ? `${testID}-loading-indicator` : 'loading-indicator'}
+            accessibilityLabel={loadingText ?? buttonText}
+          />
+          {loadingText ? (
+            <AppText
+              variant={sizeConfig.textVariant}
+              weight="bold"
+              style={StyleSheet.flatten([
+                {
+                  color: variantColors.textColor,
+                  textAlign: 'center',
+                  marginLeft: activeTheme.spacing.spaceSm
+                },
+                textStyle
+              ])}
+            >
+              {loadingText}
+            </AppText>
+          ) : null}
+        </View>
+      ) : (
+        children ?? (
+          <AppText
+            variant={sizeConfig.textVariant}
+            weight="bold"
+            style={StyleSheet.flatten([
+              { color: variantColors.textColor, textAlign: 'center' },
+              textStyle
+            ])}
+          >
+            {buttonText}
+          </AppText>
+        )
       )}
     </Pressable>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
+});
