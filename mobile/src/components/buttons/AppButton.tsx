@@ -15,6 +15,15 @@ import {
   lightTheme
 } from '../../theme';
 
+export type AppButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'outline'
+  | 'ghost'
+  | 'destructive';
+
+export type AppButtonSize = 'sm' | 'md' | 'lg';
+
 export interface AppButtonProps extends Omit<PressableProps, 'style' | 'children'> {
   /**
    * Button title text.
@@ -25,6 +34,18 @@ export interface AppButtonProps extends Omit<PressableProps, 'style' | 'children
    * Alias for title prop, adhering to project label conventions.
    */
   label?: string;
+
+  /**
+   * Visual variant controlling background, border, and contrast text colors.
+   * @default 'primary'
+   */
+  variant?: AppButtonVariant;
+
+  /**
+   * Button size controlling padding, geometry, and minimum touch envelope.
+   * @default 'md'
+   */
+  size?: AppButtonSize;
 
   /**
    * Callback fired on button press.
@@ -59,16 +80,139 @@ export interface AppButtonProps extends Omit<PressableProps, 'style' | 'children
   children?: React.ReactNode;
 }
 
+type ActiveTheme = typeof darkTheme | typeof lightTheme;
+
+interface SizeConfig {
+  minHeight: number;
+  minWidth: number;
+  paddingHorizontal: number;
+  paddingVertical: number;
+  borderRadius: number;
+  textVariant: 'caption' | 'label' | 'body';
+}
+
+function getSizeConfig(
+  size: AppButtonSize,
+  themeConfig: ActiveTheme
+): SizeConfig {
+  switch (size) {
+    case 'sm':
+      return {
+        minHeight: 44,
+        minWidth: 44,
+        paddingHorizontal: themeConfig.spacing.spaceMd,
+        paddingVertical: themeConfig.spacing.spaceXs,
+        borderRadius: themeConfig.radius.md,
+        textVariant: 'caption'
+      };
+    case 'lg':
+      return {
+        minHeight: 64,
+        minWidth: 44,
+        paddingHorizontal: themeConfig.spacing.spaceLg,
+        paddingVertical: themeConfig.spacing.spaceMd,
+        borderRadius: themeConfig.radius.card,
+        textVariant: 'body'
+      };
+    case 'md':
+    default:
+      return {
+        minHeight: Math.max(44, themeConfig.spacing.layout.primaryButtonHeight),
+        minWidth: 44,
+        paddingHorizontal: themeConfig.spacing.spaceLg,
+        paddingVertical: themeConfig.spacing.spaceSm,
+        borderRadius: themeConfig.radius.button,
+        textVariant: 'label'
+      };
+  }
+}
+
+interface VariantColors {
+  backgroundColor: string;
+  borderColor: string;
+  borderWidth: number;
+  textColor: string;
+  pressedBackgroundColor?: string;
+}
+
+function getVariantColors(
+  variant: AppButtonVariant,
+  disabled: boolean,
+  activeTheme: ActiveTheme
+): VariantColors {
+  switch (variant) {
+    case 'secondary':
+      return {
+        backgroundColor: disabled
+          ? activeTheme.colors.deckInk
+          : activeTheme.colors.panelInk,
+        borderColor: disabled
+          ? activeTheme.colors.hudGhostSubtle
+          : activeTheme.colors.hudGhostBorder,
+        borderWidth: 1,
+        textColor: disabled
+          ? activeTheme.colors.textMuted
+          : activeTheme.colors.textPrimary
+      };
+    case 'outline':
+      return {
+        backgroundColor: 'transparent',
+        borderColor: disabled
+          ? activeTheme.colors.hudGhostSubtle
+          : activeTheme.colors.hudGhostBorder,
+        borderWidth: 1,
+        textColor: disabled
+          ? activeTheme.colors.textMuted
+          : activeTheme.colors.textPrimary
+      };
+    case 'ghost':
+      return {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        borderWidth: 0,
+        textColor: disabled
+          ? activeTheme.colors.textDim
+          : activeTheme.colors.textSecondary,
+        pressedBackgroundColor: activeTheme.colors.hudGhostSubtle
+      };
+    case 'destructive':
+      return {
+        backgroundColor: disabled
+          ? activeTheme.colors.statusCriticalMuted
+          : activeTheme.colors.statusCritical,
+        borderColor: 'transparent',
+        borderWidth: 0,
+        textColor: disabled
+          ? activeTheme.colors.textMuted
+          : activeTheme.colors.textInverse
+      };
+    case 'primary':
+    default:
+      return {
+        backgroundColor: disabled
+          ? activeTheme.colors.beaconGoldMuted
+          : activeTheme.colors.beaconGold,
+        borderColor: 'transparent',
+        borderWidth: 0,
+        textColor: disabled
+          ? activeTheme.colors.textMuted
+          : activeTheme.colors.beaconGoldText
+      };
+  }
+}
+
 /**
- * AppButton — Reusable, accessible, mobile-first Base Button component
- * for Waymark Android and iOS mobile applications.
+ * AppButton — Reusable, accessible, mobile-first button component
+ * supporting Waymark 2100 design token variants and responsive sizes.
  *
- * Integrates Waymark 2100 design tokens, AppText typography,
+ * Integrates Waymark design tokens, AppText typography,
  * minimum touch targets (>= 44x44), and screen-reader accessibility.
  */
 export const AppButton: React.FC<AppButtonProps> = ({
   title,
   label,
+  variant = 'primary',
+  size = 'md',
   onPress,
   disabled = false,
   themeMode,
@@ -85,6 +229,8 @@ export const AppButton: React.FC<AppButtonProps> = ({
   const activeTheme = effectiveMode === 'light' ? lightTheme : darkTheme;
 
   const buttonText = title ?? label ?? '';
+  const sizeConfig = getSizeConfig(size, activeTheme);
+  const variantColors = getVariantColors(variant, disabled, activeTheme);
 
   const handlePress = (event: GestureResponderEvent) => {
     if (disabled) {
@@ -97,29 +243,31 @@ export const AppButton: React.FC<AppButtonProps> = ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 44,
-    minHeight: Math.max(44, activeTheme.spacing.layout.primaryButtonHeight),
-    paddingHorizontal: activeTheme.spacing.spaceLg,
-    paddingVertical: activeTheme.spacing.spaceSm,
-    borderRadius: activeTheme.radius.button,
-    backgroundColor: disabled
-      ? activeTheme.colors.beaconGoldMuted
-      : activeTheme.colors.beaconGold
+    minWidth: sizeConfig.minWidth,
+    minHeight: sizeConfig.minHeight,
+    paddingHorizontal: sizeConfig.paddingHorizontal,
+    paddingVertical: sizeConfig.paddingVertical,
+    borderRadius: sizeConfig.borderRadius,
+    backgroundColor: variantColors.backgroundColor,
+    borderWidth: variantColors.borderWidth,
+    borderColor: variantColors.borderColor
   };
 
   const getContainerStyle = (pressed: boolean): StyleProp<ViewStyle> => {
     const feedbackStyle: ViewStyle = pressed && !disabled
-      ? { opacity: 0.85, transform: [{ scale: 0.98 }] }
+      ? {
+          opacity: 0.85,
+          transform: [{ scale: 0.98 }],
+          ...(variantColors.pressedBackgroundColor
+            ? { backgroundColor: variantColors.pressedBackgroundColor }
+            : {})
+        }
       : {};
 
     const customStyle = typeof style === 'function' ? style({ pressed }) : style;
 
     return [baseContainerStyle, feedbackStyle, customStyle];
   };
-
-  const defaultTextColor = disabled
-    ? activeTheme.colors.textMuted
-    : activeTheme.colors.beaconGoldText;
 
   return (
     <Pressable
@@ -134,10 +282,10 @@ export const AppButton: React.FC<AppButtonProps> = ({
     >
       {children ?? (
         <AppText
-          variant="label"
+          variant={sizeConfig.textVariant}
           weight="bold"
           style={StyleSheet.flatten([
-            { color: defaultTextColor, textAlign: 'center' },
+            { color: variantColors.textColor, textAlign: 'center' },
             textStyle
           ])}
         >
