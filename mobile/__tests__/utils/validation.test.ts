@@ -2,7 +2,13 @@ import {
   isValidCoordinates,
   isValidNodeName,
   isValidUrl,
-  sanitizeText
+  sanitizeText,
+  validateRequired,
+  validateEmail,
+  validateMinLength,
+  validateMaxLength,
+  validatePasswordMinLength,
+  validateMatching
 } from '../../src/utils/validation';
 
 describe('Validation Utilities', () => {
@@ -39,6 +45,98 @@ describe('Validation Utilities', () => {
       expect(isValidUrl('http://localhost:8081')).toBe(true);
       expect(isValidUrl('javascript:alert(1)')).toBe(false);
       expect(isValidUrl('not-a-valid-url')).toBe(false);
+    });
+  });
+
+  describe('Form Validation Utilities', () => {
+    // TC-02.4-22: Required validation works
+    it('TC-02.4-22: validates required fields properly', () => {
+      expect(validateRequired('Janu', 'Name')).toEqual({ isValid: true });
+      expect(validateRequired('', 'Name')).toEqual({
+        isValid: false,
+        error: 'Name is required.'
+      });
+      expect(validateRequired('   ', 'Name')).toEqual({
+        isValid: false,
+        error: 'Name is required.'
+      });
+      expect(validateRequired(null, 'Name')).toEqual({
+        isValid: false,
+        error: 'Name is required.'
+      });
+      expect(validateRequired(undefined, 'Field')).toEqual({
+        isValid: false,
+        error: 'Field is required.'
+      });
+    });
+
+    // TC-02.4-23: Minimum-length validation works
+    it('TC-02.4-23: validates minimum length constraints', () => {
+      expect(validateMinLength('waymark', 5, 'Passcode')).toEqual({ isValid: true });
+      expect(validateMinLength('way', 5, 'Passcode')).toEqual({
+        isValid: false,
+        error: 'Passcode must be at least 5 characters.'
+      });
+      expect(validatePasswordMinLength('pass1234')).toEqual({ isValid: true });
+      expect(validatePasswordMinLength('short')).toEqual({
+        isValid: false,
+        error: 'Password must be at least 8 characters.'
+      });
+    });
+
+    // TC-02.4-24: Maximum-length validation works
+    it('TC-02.4-24: validates maximum length constraints', () => {
+      expect(validateMaxLength('short', 10, 'Bio')).toEqual({ isValid: true });
+      expect(validateMaxLength('this string is far too long', 10, 'Bio')).toEqual({
+        isValid: false,
+        error: 'Bio must not exceed 10 characters.'
+      });
+    });
+
+    // TC-02.4-25: Email validation handles normal valid and invalid inputs
+    it('TC-02.4-25: validates email format correctly', () => {
+      expect(validateEmail('janu@waymark.app')).toEqual({ isValid: true });
+      expect(validateEmail('sathurjanv.23@uom.lk')).toEqual({ isValid: true });
+      expect(validateEmail('user.name+tag@sub.domain.org')).toEqual({ isValid: true });
+
+      expect(validateEmail('notanemail')).toEqual({
+        isValid: false,
+        error: 'Please enter a valid email address.'
+      });
+      expect(validateEmail('user@')).toEqual({
+        isValid: false,
+        error: 'Please enter a valid email address.'
+      });
+      expect(validateEmail('@domain.com')).toEqual({
+        isValid: false,
+        error: 'Please enter a valid email address.'
+      });
+      expect(validateEmail('user@domain')).toEqual({
+        isValid: false,
+        error: 'Please enter a valid email address.'
+      });
+    });
+
+    // TC-02.4-26: Matching-value validation works
+    it('TC-02.4-26: validates matching values for confirmations', () => {
+      expect(validateMatching('Secret123', 'Secret123', 'Passwords')).toEqual({
+        isValid: true
+      });
+      expect(validateMatching('Secret123', 'Different', 'Passwords')).toEqual({
+        isValid: false,
+        error: 'Passwords do not match.'
+      });
+    });
+
+    // TC-02.4-27: Optional empty values are handled correctly
+    it('TC-02.4-27: handles optional empty values safely without false errors', () => {
+      expect(validateEmail('')).toEqual({ isValid: true });
+      expect(validateEmail(null)).toEqual({ isValid: true });
+      expect(validateEmail(undefined)).toEqual({ isValid: true });
+      expect(validateMinLength('', 8)).toEqual({ isValid: true });
+      expect(validateMinLength(null, 8)).toEqual({ isValid: true });
+      expect(validateMinLength(undefined, 8)).toEqual({ isValid: true });
+      expect(validateMaxLength('', 50)).toEqual({ isValid: true });
     });
   });
 });
