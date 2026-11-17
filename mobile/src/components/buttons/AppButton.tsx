@@ -78,6 +78,17 @@ export interface AppButtonProps extends Omit<PressableProps, 'style' | 'children
   themeMode?: 'light' | 'dark';
 
   /**
+   * Controls whether label text scales with system accessibility font scaling.
+   * @default true
+   */
+  allowFontScaling?: boolean;
+
+  /**
+   * Maximum font scale multiplier when accessibility font scaling is enabled.
+   */
+  maxFontSizeMultiplier?: number;
+
+  /**
    * Custom style overrides for button container.
    */
   style?: StyleProp<ViewStyle> | ((state: { pressed: boolean }) => StyleProp<ViewStyle>);
@@ -217,7 +228,7 @@ function getVariantColors(
 /**
  * AppButton — Reusable, accessible, mobile-first button component
  * supporting Waymark 2100 design token variants, responsive sizes,
- * and controlled loading/interaction states.
+ * controlled loading/interaction states, and assistive technology compatibility.
  */
 export const AppButton: React.FC<AppButtonProps> = ({
   title,
@@ -229,12 +240,15 @@ export const AppButton: React.FC<AppButtonProps> = ({
   onPress,
   disabled = false,
   themeMode,
+  allowFontScaling = true,
+  maxFontSizeMultiplier,
   style,
   textStyle,
   children,
   accessibilityRole = 'button',
   accessibilityState,
   accessibilityLabel,
+  accessibilityHint,
   testID,
   ...restProps
 }) => {
@@ -299,22 +313,27 @@ export const AppButton: React.FC<AppButtonProps> = ({
         busy: loading
       }}
       accessibilityLabel={effectiveAccessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessible={true}
       testID={testID}
       style={({ pressed }) => getContainerStyle(pressed)}
       {...restProps}
     >
       {loading ? (
-        <View style={styles.loadingContainer}>
+        <View style={styles.loadingContainer} accessible={false}>
           <ActivityIndicator
             size="small"
             color={variantColors.textColor}
             testID={testID ? `${testID}-loading-indicator` : 'loading-indicator'}
-            accessibilityLabel={loadingText ?? buttonText}
+            accessible={false}
           />
           {loadingText ? (
             <AppText
               variant={sizeConfig.textVariant}
               weight="bold"
+              allowFontScaling={allowFontScaling}
+              maxFontSizeMultiplier={maxFontSizeMultiplier}
+              accessible={false}
               style={StyleSheet.flatten([
                 {
                   color: variantColors.textColor,
@@ -333,6 +352,9 @@ export const AppButton: React.FC<AppButtonProps> = ({
           <AppText
             variant={sizeConfig.textVariant}
             weight="bold"
+            allowFontScaling={allowFontScaling}
+            maxFontSizeMultiplier={maxFontSizeMultiplier}
+            accessible={false}
             style={StyleSheet.flatten([
               { color: variantColors.textColor, textAlign: 'center' },
               textStyle
