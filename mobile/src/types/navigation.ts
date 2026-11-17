@@ -1,4 +1,5 @@
 export type TabRoutes = {
+  index: undefined;
   home: undefined;
   map: undefined;
   journey: undefined;
