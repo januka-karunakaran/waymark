@@ -25,7 +25,7 @@ describe('NetworkStatusBanner Component', () => {
     const { getByRole, getByText } = render(<NetworkStatusBanner />);
     expect(getByRole('alert')).toBeTruthy();
     expect(
-      getByText('TRANSIT LINK OFFLINE · RUNNING ON LOCAL TELEMETRY CACHE')
+      getByText('TRANSIT LINK OFFLINE · OPERATING WITH LOCAL DEFAULTS')
     ).toBeTruthy();
   });
 });

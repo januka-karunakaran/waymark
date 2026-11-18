@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, Href } from 'expo-router';
 import { ScreenWrapper } from '../../src/components/ScreenWrapper';
 import { NetworkStatusBanner } from '../../src/components/NetworkStatusBanner';
 import {
@@ -8,10 +8,16 @@ import {
   HomeQuickPlaceNode,
   HomeSuggestionContent
 } from '../../src/features/home';
+import {
+  DiscoveryCategory,
+  DiscoveryItem,
+  defaultDiscoveryPayload
+} from '../../src/features/discovery';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [content, setContent] = useState(defaultHomeContent);
+  const [discoveryPayload] = useState(defaultDiscoveryPayload);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleSelectSuggestion = (suggestion: HomeSuggestionContent) => {
@@ -23,6 +29,27 @@ export default function HomeScreen() {
   const handleSelectPlace = (place: HomeQuickPlaceNode) => {
     if (place.id === 'place-airport' || place.destination) {
       router.push('/(tabs)/journey');
+    }
+  };
+
+  const handleSelectDiscoveryItem = (item: DiscoveryItem) => {
+    if (item.actionDestination) {
+      router.push(item.actionDestination as Href);
+    }
+  };
+
+  const handleSelectDiscoveryCategory = (category: DiscoveryCategory) => {
+    switch (category) {
+      case 'corridors':
+      case 'modes':
+        router.push('/(tabs)/journey');
+        break;
+      case 'hubs':
+        router.push('/(tabs)/map');
+        break;
+      case 'experiences':
+        router.push('/(tabs)/comfort');
+        break;
     }
   };
 
@@ -43,8 +70,11 @@ export default function HomeScreen() {
       <NetworkStatusBanner />
       <HomeContent
         data={content}
+        discoveryPayload={discoveryPayload}
         onSelectSuggestion={handleSelectSuggestion}
         onSelectPlace={handleSelectPlace}
+        onSelectDiscoveryItem={handleSelectDiscoveryItem}
+        onSelectDiscoveryCategory={handleSelectDiscoveryCategory}
         onRefresh={handleRefresh}
         refreshing={refreshing}
       />

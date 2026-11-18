@@ -15,12 +15,12 @@ export const NetworkStatusBanner: React.FC = () => {
     <View
       style={styles.banner}
       accessibilityRole="alert"
-      accessibilityLabel="Planetary transit link offline. Operating in localized cached telemetry mode."
+      accessibilityLabel="Planetary transit link offline. Operating with local system defaults."
       accessible={true}
     >
       <WifiOff size={16} color={theme.colors.statusAdvisory} />
       <Text style={styles.text}>
-        TRANSIT LINK OFFLINE · RUNNING ON LOCAL TELEMETRY CACHE
+        TRANSIT LINK OFFLINE · OPERATING WITH LOCAL DEFAULTS
       </Text>
     </View>
   );
