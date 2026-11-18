@@ -227,7 +227,7 @@ export const SAMPLE_EXPERIENCE_ITEMS: DiscoveryItem[] = [
       stepFree: true,
       status: 'nominal'
     },
-    actionDestination: '/(tabs)/settings',
+    actionDestination: '/(tabs)/comfort',
     actionLabel: 'Configure profile',
     isEnabled: true,
     isSample: true,
