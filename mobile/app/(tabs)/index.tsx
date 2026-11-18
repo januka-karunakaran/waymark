@@ -7,9 +7,12 @@ import {
 } from 'react-native';
 import { ShieldCheck, Zap } from 'lucide-react-native';
 import { ScreenWrapper } from '../../src/components/ScreenWrapper';
+import { defaultHomeContent } from '../../src/features/home';
 import { theme } from '../../src/theme';
 
 export default function HomeScreen() {
+  const content = defaultHomeContent;
+
   return (
     <ScreenWrapper>
       <ScrollView
@@ -18,64 +21,57 @@ export default function HomeScreen() {
       >
         {/* Section Heading */}
         <View style={styles.headingBlock}>
-          <Text style={styles.eyebrow}>FOUNDATION READY · SATHU FEATURE 01</Text>
+          <Text style={styles.eyebrow}>{content.hero.eyebrow}</Text>
           <Text style={styles.headingTitle}>
-            Waymark <Text style={styles.highlightText}>Mobile</Text>
+            {content.hero.title}{' '}
+            {content.hero.titleHighlight && (
+              <Text style={styles.highlightText}>{content.hero.titleHighlight}</Text>
+            )}
           </Text>
-          <Text style={styles.headingDetail}>
-            Production-quality native mobile foundation for planetary transit telemetry.
-          </Text>
+          <Text style={styles.headingDetail}>{content.hero.subtitle}</Text>
         </View>
 
         {/* Suggestion Card */}
-        <View style={styles.suggestionCard}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardKickerGroup}>
-              <Zap size={14} color={theme.colors.abyssVoid} />
-              <Text style={styles.cardKickerText}>SUGGESTED ACTIVE ROUTE</Text>
+        {content.suggestion && (
+          <View style={styles.suggestionCard}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardKickerGroup}>
+                <Zap size={14} color={theme.colors.abyssVoid} />
+                <Text style={styles.cardKickerText}>{content.suggestion.kicker}</Text>
+              </View>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{content.suggestion.badgeText}</Text>
+              </View>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>LEAVE NOW</Text>
-            </View>
+            <Text style={styles.cardTitle}>{content.suggestion.title}</Text>
+            <Text style={styles.cardDescription}>{content.suggestion.description}</Text>
           </View>
-          <Text style={styles.cardTitle}>KDU Gate → Kandy City</Text>
-          <Text style={styles.cardDescription}>
-            Avoids monsoon ground surge · Air Shuttle flight sync ready
-          </Text>
-        </View>
+        )}
 
         {/* Foundation Modules Status Panel */}
-        <View style={styles.panel}>
-          <View style={styles.panelTitleRow}>
-            <Text style={styles.panelTitle}>TELEMETRY FOUNDATION ARCHITECTURE</Text>
-            <Text style={styles.panelStatus}>OPERATIONAL</Text>
-          </View>
+        {content.architectureStatus && (
+          <View style={styles.panel}>
+            <View style={styles.panelTitleRow}>
+              <Text style={styles.panelTitle}>{content.architectureStatus.title}</Text>
+              <Text style={styles.panelStatus}>{content.architectureStatus.statusLabel}</Text>
+            </View>
 
-          <View style={styles.moduleGrid}>
-            <View style={styles.moduleItem}>
-              <Text style={styles.moduleLabel}>THEME & TOKENS</Text>
-              <Text style={styles.moduleValue}>Night Transit (2100)</Text>
-            </View>
-            <View style={styles.moduleItem}>
-              <Text style={styles.moduleLabel}>API SERVICE</Text>
-              <Text style={styles.moduleValue}>Timeout & Interceptors</Text>
-            </View>
-            <View style={styles.moduleItem}>
-              <Text style={styles.moduleLabel}>STORAGE ENGINE</Text>
-              <Text style={styles.moduleValue}>Hardware SecureStore</Text>
-            </View>
-            <View style={styles.moduleItem}>
-              <Text style={styles.moduleLabel}>RESILIENCE</Text>
-              <Text style={styles.moduleValue}>NetInfo + ErrorBoundary</Text>
+            <View style={styles.moduleGrid}>
+              {content.architectureStatus.modules.map((item) => (
+                <View style={styles.moduleItem} key={item.id}>
+                  <Text style={styles.moduleLabel}>{item.label}</Text>
+                  <Text style={styles.moduleValue}>{item.value}</Text>
+                </View>
+              ))}
             </View>
           </View>
-        </View>
+        )}
 
         {/* Accessibility Guarantee Banner */}
         <View style={styles.accessibilityRow}>
           <ShieldCheck size={18} color={theme.colors.trainTeal} />
           <Text style={styles.accessibilityText}>
-            Universal step-free routes guaranteed across all nodes
+            {content.accessibilityNotice.message}
           </Text>
         </View>
       </ScrollView>
