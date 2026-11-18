@@ -23,10 +23,10 @@ describe('Home Content Architecture & Typed Model', () => {
     });
 
     it('contains non-empty hero titles and details', () => {
-      expect(defaultHomeContent.hero.title).toBe('Waymark');
-      expect(defaultHomeContent.hero.titleHighlight).toBe('Mobile');
+      expect(defaultHomeContent.hero.title).toBe('Where would you like to');
+      expect(defaultHomeContent.hero.titleHighlight).toBe('go?');
       expect(defaultHomeContent.hero.subtitle.length).toBeGreaterThan(0);
-      expect(defaultHomeContent.hero.eyebrow).toBe('FOUNDATION READY · SATHU FEATURE 01');
+      expect(defaultHomeContent.hero.eyebrow).toBe('Good morning, navigator');
     });
 
     it('honestly tags simulated route recommendation as sample data', () => {
@@ -101,7 +101,7 @@ describe('Home Content Architecture & Typed Model', () => {
     });
 
     it('provides user-facing home intro configuration for next phase', () => {
-      expect(userFacingHomeIntro.eyebrow).toBe('PLANETARY TRANSIT NETWORK');
+      expect(userFacingHomeIntro.eyebrow).toBe('Good morning, navigator');
       expect(userFacingHomeIntro.titleHighlight).toBe('go?');
     });
   });

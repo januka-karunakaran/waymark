@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { ShieldCheck, Zap } from 'lucide-react-native';
 import { ScreenWrapper } from '../../src/components/ScreenWrapper';
-import { defaultHomeContent } from '../../src/features/home';
+import { defaultHomeContent, HomeHero } from '../../src/features/home';
 import { theme } from '../../src/theme';
 
 export default function HomeScreen() {
@@ -19,17 +19,8 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Section Heading */}
-        <View style={styles.headingBlock}>
-          <Text style={styles.eyebrow}>{content.hero.eyebrow}</Text>
-          <Text style={styles.headingTitle}>
-            {content.hero.title}{' '}
-            {content.hero.titleHighlight && (
-              <Text style={styles.highlightText}>{content.hero.titleHighlight}</Text>
-            )}
-          </Text>
-          <Text style={styles.headingDetail}>{content.hero.subtitle}</Text>
-        </View>
+        {/* User-Friendly Home Hero */}
+        <HomeHero content={content.hero} />
 
         {/* Suggestion Card */}
         {content.suggestion && (
@@ -83,26 +74,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: theme.spacing.margin,
     gap: theme.spacing.spaceMd
-  },
-  headingBlock: {
-    marginBottom: theme.spacing.spaceSm
-  },
-  eyebrow: {
-    ...theme.typography.styles.labelMonoSm,
-    color: theme.colors.textMuted,
-    marginBottom: theme.spacing.spaceXs
-  },
-  headingTitle: {
-    ...theme.typography.styles.displayLg,
-    color: theme.colors.textPrimary
-  },
-  highlightText: {
-    color: theme.colors.beaconGold
-  },
-  headingDetail: {
-    ...theme.typography.styles.bodyMd,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.spaceXs
   },
   suggestionCard: {
     backgroundColor: theme.colors.beaconGold,

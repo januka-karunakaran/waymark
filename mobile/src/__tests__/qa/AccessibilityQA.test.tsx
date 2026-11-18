@@ -146,7 +146,7 @@ describe('Feature 02.8 — Accessibility & Navigation Quality Assurance', () => 
       render(<MockTabNavigator />);
 
       // Starts at Home
-      expect(screen.getByText('FOUNDATION READY · SATHU FEATURE 01')).toBeTruthy();
+      expect(screen.getByText('Good morning, navigator')).toBeTruthy();
 
       // Home to Live Map
       fireEvent.press(screen.getByTestId('tab-map'));
@@ -166,7 +166,7 @@ describe('Feature 02.8 — Accessibility & Navigation Quality Assurance', () => 
 
       // Comfort back to Home
       fireEvent.press(screen.getByTestId('tab-home'));
-      expect(screen.getByText('FOUNDATION READY · SATHU FEATURE 01')).toBeTruthy();
+      expect(screen.getByText('Good morning, navigator')).toBeTruthy();
     });
 
     it('TC-02.8-04: repeated tab switching remains stable without state thrashing', () => {
@@ -571,7 +571,7 @@ describe('Feature 02.8 — Accessibility & Navigation Quality Assurance', () => 
     it('TC-02.8-23: Home route resolves correctly with ScreenWrapper and avionics branding', () => {
       render(<HomeScreen />);
       expect(screen.getByText('WAYMARK 2100')).toBeTruthy();
-      expect(screen.getByText('FOUNDATION READY · SATHU FEATURE 01')).toBeTruthy();
+      expect(screen.getByText('Good morning, navigator')).toBeTruthy();
     });
 
     it('TC-02.8-24: Live Map route resolves correctly with dedicated canvas header', () => {

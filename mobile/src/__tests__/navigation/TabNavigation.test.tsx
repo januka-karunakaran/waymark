@@ -55,7 +55,7 @@ describe('Tab Screen Integration & Navigation State', () => {
     render(<MockTabNavigator />);
 
     // Initially Home is active
-    expect(screen.getByText('FOUNDATION READY · SATHU FEATURE 01')).toBeTruthy();
+    expect(screen.getByText('Good morning, navigator')).toBeTruthy();
     const homeTab = screen.getByTestId('tab-home');
     expect(homeTab.props.accessibilityState.selected).toBe(true);
 

@@ -14,7 +14,7 @@ describe('Screen Header Integration & Navigation Flow', () => {
     render(<HomeScreen />);
     expect(screen.getByText('WAYMARK 2100')).toBeTruthy();
     expect(screen.getByText('PLANETARY TRANSIT NETWORK')).toBeTruthy();
-    expect(screen.getByText('FOUNDATION READY · SATHU FEATURE 01')).toBeTruthy();
+    expect(screen.getByText('Good morning, navigator')).toBeTruthy();
   });
 
   // TC-02.7-16: Live Map header renders correctly
