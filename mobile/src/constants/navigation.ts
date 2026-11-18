@@ -2,8 +2,10 @@
  * Waymark Mobile Bottom Tab Navigation Specifications & Route Metadata
  */
 
+export type TabRouteName = 'index' | 'map' | 'journey' | 'oracle' | 'comfort';
+
 export interface TabConfig {
-  name: 'index' | 'map' | 'journey' | 'oracle' | 'comfort';
+  name: TabRouteName;
   title: string;
   accessibilityLabel: string;
   accessibilityHint: string;
