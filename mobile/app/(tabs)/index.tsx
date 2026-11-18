@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { ScreenWrapper } from '../../src/components/ScreenWrapper';
+import { NetworkStatusBanner } from '../../src/components/NetworkStatusBanner';
 import {
   defaultHomeContent,
   HomeContent,
@@ -10,7 +11,8 @@ import {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const content = defaultHomeContent;
+  const [content, setContent] = useState(defaultHomeContent);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleSelectSuggestion = (suggestion: HomeSuggestionContent) => {
     if (suggestion.targetScreen === 'journey') {
@@ -24,12 +26,27 @@ export default function HomeScreen() {
     }
   };
 
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Local simulation: preserves offline resilience without faking live API responses
+    setTimeout(() => {
+      setContent((prev) => ({
+        ...prev,
+        lastUpdatedTimestamp: Date.now()
+      }));
+      setRefreshing(false);
+    }, 300);
+  }, []);
+
   return (
     <ScreenWrapper>
+      <NetworkStatusBanner />
       <HomeContent
         data={content}
         onSelectSuggestion={handleSelectSuggestion}
         onSelectPlace={handleSelectPlace}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
       />
     </ScreenWrapper>
   );

@@ -22,6 +22,9 @@ import {
 import { AppText } from '../../../components/typography';
 import { AppButton } from '../../../components/buttons';
 import { AppCard } from '../../../components/cards';
+import { LoadingIndicator } from '../../../components/LoadingIndicator';
+import { ErrorState } from '../../../components/ErrorState';
+import { EmptyState } from '../../../components/EmptyState';
 import { theme as defaultTheme, darkTheme, lightTheme } from '../../../theme';
 import {
   HomeScreenData,
@@ -29,15 +32,56 @@ import {
   HomeSuggestionContent
 } from '../types';
 import { defaultHomeContent } from '../data/homeContent';
+import { sanitizeHomeScreenData } from '../utils/homePresentation';
 import { HomeHero } from './HomeHero';
 import { HomeSection } from './HomeSection';
 
 export interface HomeContentProps {
   /**
    * Strongly typed Home screen dataset.
-   * Defaults to defaultHomeContent if omitted.
+   * If omitted or null, gracefully falls back to default verified content.
    */
-  data?: HomeScreenData;
+  data?: HomeScreenData | null;
+
+  /**
+   * Explicit loading state override.
+   */
+  isLoading?: boolean;
+
+  /**
+   * Accessible status message displayed during loading state.
+   */
+  loadingMessage?: string;
+
+  /**
+   * Explicit error state override.
+   */
+  isError?: boolean;
+
+  /**
+   * User-friendly error message. Prevents exposure of internal error details.
+   */
+  errorMessage?: string;
+
+  /**
+   * Retry callback for error recovery. When supplied, displays retry button.
+   */
+  onRetry?: () => void;
+
+  /**
+   * Explicit empty state override.
+   */
+  isEmpty?: boolean;
+
+  /**
+   * Custom title displayed during empty state.
+   */
+  emptyTitle?: string;
+
+  /**
+   * Custom message displayed during empty state.
+   */
+  emptyMessage?: string;
 
   /**
    * Action callback triggered when user taps "Start this route" or suggestion card.
@@ -98,11 +142,19 @@ function renderPlaceIcon(iconName: string, color: string) {
 /**
  * HomeContent — Responsive, native layout container for Waymark Home.
  *
- * Implements smooth vertical scrolling, consistent spacing tokens, tablet centering,
- * bottom-tab buffer margins, and semantic section grouping.
+ * Implements smooth vertical scrolling, loading/empty/error states, tablet centering,
+ * bottom-tab buffer margins, and explicit sample data demarcation.
  */
 export const HomeContent: React.FC<HomeContentProps> = ({
   data = defaultHomeContent,
+  isLoading = false,
+  loadingMessage,
+  isError = false,
+  errorMessage,
+  onRetry,
+  isEmpty = false,
+  emptyTitle,
+  emptyMessage,
   onSelectSuggestion,
   onSelectPlace,
   onRefresh,
@@ -117,6 +169,98 @@ export const HomeContent: React.FC<HomeContentProps> = ({
 
   const effectiveMode = themeMode ?? defaultTheme.mode;
   const activeTheme = effectiveMode === 'light' ? lightTheme : darkTheme;
+
+  // 1. Sanitize incoming data to guard against malformed or corrupted payloads
+  const sanitizedData = React.useMemo(() => {
+    try {
+      if (!data) return defaultHomeContent;
+      return sanitizeHomeScreenData(data);
+    } catch {
+      return defaultHomeContent;
+    }
+  }, [data]);
+
+  // 2. Evaluate state flags
+  const isCurrentlyLoading =
+    isLoading || data?.availability === 'loading';
+  const isCurrentlyError =
+    isError || data?.availability === 'error';
+  const isCurrentlyEmpty =
+    isEmpty ||
+    data?.availability === 'empty' ||
+    (sanitizedData &&
+      !sanitizedData.hero &&
+      !sanitizedData.suggestion &&
+      (!sanitizedData.quickPlaces || sanitizedData.quickPlaces.length === 0));
+
+  // 3. Render loading state
+  if (isCurrentlyLoading) {
+    return (
+      <View
+        style={[
+          styles.stateWrapper,
+          { backgroundColor: activeTheme.colors.abyssVoid }
+        ]}
+        testID={`${testID}-loading`}
+      >
+        <LoadingIndicator
+          message={loadingMessage ?? 'Synchronizing transit telemetry...'}
+          fullscreen={false}
+          testID={`${testID}-loading-indicator`}
+        />
+      </View>
+    );
+  }
+
+  // 4. Render error state
+  if (isCurrentlyError) {
+    return (
+      <View
+        style={[
+          styles.stateWrapper,
+          { backgroundColor: activeTheme.colors.abyssVoid }
+        ]}
+        testID={`${testID}-error`}
+      >
+        <ErrorState
+          title="Telemetry Sync Disrupted"
+          message={
+            errorMessage ??
+            'Unable to synchronize transit telemetry. Operating with local system defaults.'
+          }
+          onRetry={onRetry}
+          retryLabel={onRetry ? 'Retry Transmission' : undefined}
+          testID={`${testID}-error-state`}
+        />
+      </View>
+    );
+  }
+
+  // 5. Render empty state
+  if (isCurrentlyEmpty) {
+    return (
+      <View
+        style={[
+          styles.stateWrapper,
+          { backgroundColor: activeTheme.colors.abyssVoid }
+        ]}
+        testID={`${testID}-empty`}
+      >
+        <EmptyState
+          title={emptyTitle ?? 'No Transit Vectors Found'}
+          message={
+            emptyMessage ??
+            'No active transit corridors or departure nodes are currently registered.'
+          }
+          actionLabel={onRetry ? 'Refresh Network' : undefined}
+          onAction={onRetry}
+          testID={`${testID}-empty-state`}
+        />
+      </View>
+    );
+  }
+
+  const activeContent = sanitizedData;
 
   const responsiveInnerStyle: ViewStyle = {
     maxWidth: isTablet ? 680 : '100%',
@@ -156,16 +300,16 @@ export const HomeContent: React.FC<HomeContentProps> = ({
       accessibilityRole="none"
     >
       {/* 1. Introductory Hero Section */}
-      {Boolean(data.hero) && (
+      {Boolean(activeContent.hero) && (
         <HomeHero
-          content={data.hero}
+          content={activeContent.hero}
           themeMode={themeMode}
           testID="home-hero"
         />
       )}
 
       {/* 2. Suggested Route Recommendation Card */}
-      {Boolean(data.suggestion) && (
+      {Boolean(activeContent.suggestion) && (
         <HomeSection
           eyebrow="ACTIVE ROUTING"
           title="Suggested Corridor"
@@ -187,7 +331,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({
                   style={styles.cardKickerText}
                   testID="home-suggestion-kicker"
                 >
-                  {data.suggestion!.kicker}
+                  {activeContent.suggestion!.kicker}
                 </AppText>
               </View>
               <View style={styles.badge}>
@@ -197,7 +341,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({
                   style={styles.badgeText}
                   testID="home-suggestion-badge"
                 >
-                  {data.suggestion!.badgeText}
+                  {activeContent.suggestion!.badgeText}
                 </AppText>
               </View>
             </View>
@@ -208,7 +352,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({
               style={styles.cardTitle}
               testID="home-suggestion-title"
             >
-              {data.suggestion!.title}
+              {activeContent.suggestion!.title}
             </AppText>
 
             <AppText
@@ -216,16 +360,32 @@ export const HomeContent: React.FC<HomeContentProps> = ({
               style={styles.cardDescription}
               testID="home-suggestion-description"
             >
-              {data.suggestion!.description}
+              {activeContent.suggestion!.description}
             </AppText>
 
-            {Boolean(data.suggestion!.actionLabel) && (
+            {/* Explicit Sample Data Demarcation */}
+            {Boolean(activeContent.suggestion!.isSample) && (
+              <View style={styles.sampleTagRow}>
+                <AppText
+                  variant="caption"
+                  color="dim"
+                  style={styles.sampleTagText}
+                  testID="home-suggestion-sample-tag"
+                >
+                  SIMULATED CORRIDOR · LIVE TELEMETRY IN FEATURE 05
+                </AppText>
+              </View>
+            )}
+
+            {Boolean(activeContent.suggestion!.actionLabel) && (
               <View style={styles.cardActionRow}>
                 <AppButton
-                  label={data.suggestion!.actionLabel}
+                  label={activeContent.suggestion!.actionLabel}
                   variant="secondary"
                   size="md"
-                  onPress={() => onSelectSuggestion?.(data.suggestion!)}
+                  onPress={() =>
+                    onSelectSuggestion?.(activeContent.suggestion!)
+                  }
                   testID="home-suggestion-action"
                 />
               </View>
@@ -235,50 +395,54 @@ export const HomeContent: React.FC<HomeContentProps> = ({
       )}
 
       {/* 3. Quick Destinations / Places Shortcuts */}
-      {Array.isArray(data.quickPlaces) && data.quickPlaces.length > 0 && (
-        <HomeSection
-          eyebrow="TRANSIT DIRECTORY"
-          title="Quick Destinations"
-          testID="home-quick-places-section"
-          themeMode={themeMode}
-        >
-          <View style={styles.quickPlacesGrid} testID="home-quick-places-grid">
-            {data.quickPlaces.map((place) => (
-              <Pressable
-                key={place.id}
-                onPress={() => onSelectPlace?.(place)}
-                accessibilityRole="button"
-                accessibilityLabel={`Travel to ${place.destination}`}
-                testID={`quick-place-${place.id}`}
-                style={({ pressed }) => [
-                  styles.placeChip,
-                  pressed && styles.placeChipPressed
-                ]}
-              >
-                <View style={styles.placeIconWrapper}>
-                  {renderPlaceIcon(
-                    place.iconName,
-                    activeTheme.colors.beaconGold
-                  )}
-                </View>
-                <AppText
-                  variant="caption"
-                  weight="semibold"
-                  color="primary"
-                  themeMode={themeMode}
-                  numberOfLines={1}
-                  style={styles.placeLabel}
+      {Array.isArray(activeContent.quickPlaces) &&
+        activeContent.quickPlaces.length > 0 && (
+          <HomeSection
+            eyebrow="TRANSIT DIRECTORY"
+            title="Quick Destinations"
+            testID="home-quick-places-section"
+            themeMode={themeMode}
+          >
+            <View
+              style={styles.quickPlacesGrid}
+              testID="home-quick-places-grid"
+            >
+              {activeContent.quickPlaces.map((place) => (
+                <Pressable
+                  key={place.id}
+                  onPress={() => onSelectPlace?.(place)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Travel to ${place.destination}`}
+                  testID={`quick-place-${place.id}`}
+                  style={({ pressed }) => [
+                    styles.placeChip,
+                    pressed && styles.placeChipPressed
+                  ]}
                 >
-                  {place.label}
-                </AppText>
-              </Pressable>
-            ))}
-          </View>
-        </HomeSection>
-      )}
+                  <View style={styles.placeIconWrapper}>
+                    {renderPlaceIcon(
+                      place.iconName,
+                      activeTheme.colors.beaconGold
+                    )}
+                  </View>
+                  <AppText
+                    variant="caption"
+                    weight="semibold"
+                    color="primary"
+                    themeMode={themeMode}
+                    numberOfLines={1}
+                    style={styles.placeLabel}
+                  >
+                    {place.label}
+                  </AppText>
+                </Pressable>
+              ))}
+            </View>
+          </HomeSection>
+        )}
 
       {/* 4. Telemetry Foundation Architecture Diagnostics */}
-      {Boolean(data.architectureStatus) && (
+      {Boolean(activeContent.architectureStatus) && (
         <HomeSection
           eyebrow="AVIONICS STATUS"
           title="System Diagnostics"
@@ -300,7 +464,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({
                 style={styles.panelTitle}
                 testID="home-architecture-title"
               >
-                {data.architectureStatus!.title}
+                {activeContent.architectureStatus!.title}
               </AppText>
               <AppText
                 variant="caption"
@@ -310,12 +474,12 @@ export const HomeContent: React.FC<HomeContentProps> = ({
                 style={styles.panelStatus}
                 testID="home-architecture-status"
               >
-                {data.architectureStatus!.statusLabel}
+                {activeContent.architectureStatus!.statusLabel}
               </AppText>
             </View>
 
             <View style={styles.moduleGrid}>
-              {data.architectureStatus!.modules.map((item) => (
+              {activeContent.architectureStatus!.modules.map((item) => (
                 <View
                   style={styles.moduleItem}
                   key={item.id}
@@ -347,22 +511,35 @@ export const HomeContent: React.FC<HomeContentProps> = ({
       )}
 
       {/* 5. Universal Accessibility Banner */}
-      {Boolean(data.accessibilityNotice?.message) && (
+      {Boolean(activeContent.accessibilityNotice?.message) && (
         <View
           style={styles.accessibilityRow}
           testID="home-accessibility-banner"
           accessibilityRole="summary"
         >
           <ShieldCheck size={18} color={activeTheme.colors.trainTeal} />
-          <AppText
-            variant="bodySmall"
-            color="secondary"
-            themeMode={themeMode}
-            style={styles.accessibilityText}
-            testID="home-accessibility-text"
-          >
-            {data.accessibilityNotice.message}
-          </AppText>
+          <View style={styles.accessibilityTextGroup}>
+            <AppText
+              variant="bodySmall"
+              color="secondary"
+              themeMode={themeMode}
+              style={styles.accessibilityText}
+              testID="home-accessibility-text"
+            >
+              {activeContent.accessibilityNotice.message}
+            </AppText>
+            {activeContent.accessibilityNotice.verificationLevel ===
+              'informational' && (
+              <AppText
+                variant="caption"
+                color="muted"
+                style={styles.accessibilityNoteText}
+                testID="home-accessibility-level"
+              >
+                Informational baseline · Corridors mandate universal step-free access
+              </AppText>
+            )}
+          </View>
         </View>
       )}
     </ScrollView>
@@ -376,6 +553,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     gap: defaultTheme.spacing.spaceLg
+  },
+  stateWrapper: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: defaultTheme.spacing.spaceLg
   },
   suggestionCard: {
     backgroundColor: defaultTheme.colors.beaconGold,
@@ -412,7 +596,20 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     color: '#614900',
-    marginBottom: defaultTheme.spacing.spaceMd
+    marginBottom: defaultTheme.spacing.spaceSm
+  },
+  sampleTagRow: {
+    marginBottom: defaultTheme.spacing.spaceMd,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    backgroundColor: 'rgba(36, 26, 0, 0.08)',
+    borderRadius: 4,
+    alignSelf: 'flex-start'
+  },
+  sampleTagText: {
+    fontSize: 10,
+    color: '#614900',
+    letterSpacing: 0.6
   },
   cardActionRow: {
     marginTop: defaultTheme.spacing.spaceXs,
@@ -495,7 +692,7 @@ const styles = StyleSheet.create({
   },
   accessibilityRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: defaultTheme.spacing.spaceSm,
     padding: defaultTheme.spacing.spaceMd,
     borderRadius: defaultTheme.spacing.radii.md,
@@ -503,7 +700,14 @@ const styles = StyleSheet.create({
     borderColor: defaultTheme.colors.trainTealBorder,
     backgroundColor: defaultTheme.colors.trainTealMuted
   },
+  accessibilityTextGroup: {
+    flex: 1,
+    gap: 2
+  },
   accessibilityText: {
     flex: 1
+  },
+  accessibilityNoteText: {
+    fontSize: 11
   }
 });
