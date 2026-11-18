@@ -7,19 +7,84 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Navigation } from 'lucide-react-native';
+import { AppHeader, AppHeaderVariant } from './navigation/AppHeader';
 import { theme } from '../theme';
 
 export interface ScreenWrapperProps {
+  /**
+   * Screen body content rendered inside safe area boundaries.
+   */
   children: ReactNode;
+
+  /**
+   * Main title rendered in the screen header.
+   * @default 'WAYMARK 2100'
+   */
   title?: string;
+
+  /**
+   * Subtitle rendered in the screen header.
+   * @default 'PLANETARY TRANSIT NETWORK'
+   */
   subtitle?: string;
+
+  /**
+   * Whether to render the telemetry status strip below the header.
+   * @default true
+   */
   showTelemetryStrip?: boolean;
+
+  /**
+   * Telemetry status message.
+   * @default 'City network: running normally'
+   */
   telemetryStatus?: string;
+
+  /**
+   * Telemetry latency readout.
+   * @default 'LATENCY 4ms'
+   */
   telemetryLatency?: string;
+
+  /**
+   * Header layout variant ('default' | 'compact' | 'detail').
+   * @default 'default'
+   */
+  headerVariant?: AppHeaderVariant;
+
+  /**
+   * Whether to display contextual back navigation in the header.
+   * @default false
+   */
+  showBackButton?: boolean;
+
+  /**
+   * Custom back action callback.
+   */
+  onBack?: () => void;
+
+  /**
+   * Optional trailing action triggers.
+   */
+  headerActions?: ReactNode;
+
+  /**
+   * Controls top header visibility.
+   * @default true
+   */
+  showHeader?: boolean;
+
+  /**
+   * Custom container style applied to the inner body view.
+   */
   style?: ViewStyle;
 }
 
+/**
+ * ScreenWrapper — Primary structural scaffolding for Waymark mobile screens.
+ * Integrates SafeAreaView, StatusBar, AppHeader, and telemetry status strips
+ * without creating duplicate headers.
+ */
 export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   children,
   title = 'WAYMARK 2100',
@@ -27,6 +92,11 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   showTelemetryStrip = true,
   telemetryStatus = 'City network: running normally',
   telemetryLatency = 'LATENCY 4ms',
+  headerVariant = 'default',
+  showBackButton = false,
+  onBack,
+  headerActions,
+  showHeader = true,
   style
 }) => {
   return (
@@ -34,33 +104,34 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
       <StatusBar style="light" backgroundColor={theme.colors.abyssVoid} />
 
       {/* Top Header */}
-      <View style={styles.header}>
-        <View style={styles.brandLockup}>
-          <View style={styles.brandMark}>
-            <Navigation size={18} color={theme.colors.beaconGold} />
-          </View>
-          <View>
-            <Text style={styles.brandTitle}>{title}</Text>
-            <Text style={styles.brandSubtitle}>{subtitle}</Text>
-          </View>
-        </View>
-
-        <View style={styles.systemPill}>
-          <View style={styles.pulseDot} />
-          <Text style={styles.systemPillText}>SYS.LIVE</Text>
-        </View>
-      </View>
+      {showHeader ? (
+        <AppHeader
+          title={title}
+          subtitle={subtitle}
+          variant={headerVariant}
+          showBackButton={showBackButton}
+          onBack={onBack}
+          trailingActions={headerActions}
+          testID="screen-header"
+        />
+      ) : null}
 
       {/* Real-time Telemetry Strip */}
-      {showTelemetryStrip && (
-        <View style={styles.telemetryStrip}>
-          <View style={styles.telemetryStatusGroup}>
-            <View style={styles.telemetryDot} />
-            <Text style={styles.telemetryStatusText}>{telemetryStatus}</Text>
-          </View>
-          <Text style={styles.telemetryLatencyText}>{telemetryLatency}</Text>
+      {showTelemetryStrip && (telemetryStatus || telemetryLatency) ? (
+        <View style={styles.telemetryStrip} testID="screen-telemetry-strip">
+          {telemetryStatus ? (
+            <View style={styles.telemetryStatusGroup}>
+              <View style={styles.telemetryDot} />
+              <Text style={styles.telemetryStatusText}>{telemetryStatus}</Text>
+            </View>
+          ) : (
+            <View />
+          )}
+          {telemetryLatency ? (
+            <Text style={styles.telemetryLatencyText}>{telemetryLatency}</Text>
+          ) : null}
         </View>
-      )}
+      ) : null}
 
       {/* Screen Body */}
       <View style={[styles.body, style]}>{children}</View>
@@ -72,66 +143,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.abyssVoid
-  },
-  header: {
-    height: theme.spacing.layout.headerHeight,
-    paddingHorizontal: theme.spacing.margin,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.abyssVoid,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.hudGhostBorder
-  },
-  brandLockup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.spaceSm
-  },
-  brandMark: {
-    width: 32,
-    height: 32,
-    borderRadius: theme.spacing.radii.md,
-    backgroundColor: theme.colors.beaconGoldMuted,
-    borderWidth: 1,
-    borderColor: theme.colors.luminousEdge,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  brandTitle: {
-    ...theme.typography.styles.labelMonoMd,
-    color: theme.colors.beaconGold,
-    letterSpacing: 0.8
-  },
-  brandSubtitle: {
-    ...theme.typography.styles.labelMonoSm,
-    fontSize: 8,
-    color: theme.colors.textMuted,
-    letterSpacing: 1.0,
-    marginTop: 2
-  },
-  systemPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: theme.spacing.radii.pill,
-    backgroundColor: theme.colors.trainTealMuted,
-    borderWidth: 1,
-    borderColor: theme.colors.trainTealBorder
-  },
-  pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.colors.trainTeal
-  },
-  systemPillText: {
-    ...theme.typography.styles.labelMonoSm,
-    fontSize: 9,
-    color: theme.colors.trainTeal,
-    letterSpacing: 0.8
   },
   telemetryStrip: {
     paddingHorizontal: theme.spacing.margin,

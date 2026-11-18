@@ -61,3 +61,22 @@ jest.mock('react-native-safe-area-context', () => {
     useSafeAreaInsets: () => inset
   };
 });
+
+// Mock expo-router
+jest.mock('expo-router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    canGoBack: jest.fn(() => true)
+  }),
+  usePathname: () => '/',
+  useSegments: () => [],
+  Tabs: Object.assign(({ children }) => children, {
+    Screen: () => null
+  }),
+  Stack: Object.assign(({ children }) => children, {
+    Screen: () => null
+  }),
+  Link: ({ children }) => children
+}));
