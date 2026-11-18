@@ -10,20 +10,19 @@ import {
 import { AppCard } from '../../../components/cards';
 import { LoadingIndicator } from '../../../components/LoadingIndicator';
 import { AppText } from '../../../components/typography';
-import { theme as defaultTheme, darkTheme, lightTheme } from '../../../theme';
+import { theme as defaultTheme } from '../../../theme';
 import type {
   DiscoveryCategory as DiscoveryCategoryType,
   DiscoveryItem,
   DiscoverySectionData
 } from '../types';
 import {
-  formatDiscoveryMetadataSummary,
   isDiscoverySampleContent
 } from '../utils/discoveryPresentation';
 import {
-  DiscoveryCategoryBadge,
-  renderDiscoveryIcon
+  DiscoveryCategoryBadge
 } from './DiscoveryCategory';
+import { DiscoveryCard } from './DiscoveryCard';
 
 export type DiscoverySectionLayout = 'horizontal' | 'vertical' | 'grid';
 
@@ -112,7 +111,6 @@ export const DiscoverySection: React.FC<DiscoverySectionProps> = ({
   showSampleBadge = true,
   emptyMessage = 'No active transit vectors found in this corridor.'
 }) => {
-  const activeTheme = themeMode === 'light' ? lightTheme : darkTheme;
   const { category, eyebrow, title, description, items, availability } = section;
 
   // Determine if this section is composed of simulated/sample content
@@ -124,115 +122,15 @@ export const DiscoverySection: React.FC<DiscoverySectionProps> = ({
    * Default card renderer for discovery items when custom renderItem is not provided.
    */
   const defaultRenderItem = (item: DiscoveryItem, index: number) => {
-    const metaSummary = formatDiscoveryMetadataSummary(item);
-    const isSample = isDiscoverySampleContent(item);
-
     return (
-      <AppCard
+      <DiscoveryCard
         key={item.id || `disc-item-${index}`}
-        variant="elevated"
+        item={item}
+        layout={layout}
         themeMode={themeMode}
         testID={`${testID}-card-${item.id}`}
-        style={[
-          styles.card,
-          layout === 'horizontal' && styles.cardHorizontal,
-          layout === 'grid' && styles.cardGrid,
-          layout === 'vertical' && styles.cardVertical
-        ]}
-        accessibilityLabel={`${item.title}${item.badgeText ? `, ${item.badgeText}` : ''}`}
-      >
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.cardIconBox}>
-            {renderDiscoveryIcon(item.iconName, 18, activeTheme.colors.trainTeal)}
-          </View>
-          <View style={styles.cardBadgeCluster}>
-            {Boolean(item.badgeText) && (
-              <View
-                style={[
-                  styles.badgePill,
-                  {
-                    backgroundColor:
-                      themeMode === 'light'
-                        ? 'rgba(0, 0, 0, 0.06)'
-                        : 'rgba(255, 255, 255, 0.1)'
-                  }
-                ]}
-              >
-                <AppText
-                  variant="caption"
-                  weight="semibold"
-                  color="brand"
-                  themeMode={themeMode}
-                  style={styles.badgeText}
-                >
-                  {item.badgeText}
-                </AppText>
-              </View>
-            )}
-            {isSample && (
-              <View
-                style={[
-                  styles.badgePill,
-                  styles.samplePill,
-                  {
-                    backgroundColor: 'rgba(255, 179, 0, 0.12)',
-                    borderColor: 'rgba(255, 179, 0, 0.3)'
-                  }
-                ]}
-              >
-                <AppText
-                  variant="caption"
-                  weight="semibold"
-                  color="warning"
-                  themeMode={themeMode}
-                  style={styles.badgeText}
-                >
-                  SAMPLE
-                </AppText>
-              </View>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.cardBody}>
-          <AppText
-            variant="body"
-            weight="semibold"
-            color="primary"
-            themeMode={themeMode}
-            numberOfLines={2}
-            testID={`${testID}-card-${item.id}-title`}
-          >
-            {item.title}
-          </AppText>
-
-          {Boolean(item.description) && (
-            <AppText
-              variant="bodySmall"
-              color="secondary"
-              themeMode={themeMode}
-              numberOfLines={2}
-              style={styles.cardDescription}
-            >
-              {item.description}
-            </AppText>
-          )}
-
-          {Boolean(metaSummary) && (
-            <View style={styles.metaRow}>
-              <AppText
-                variant="caption"
-                color="muted"
-                themeMode={themeMode}
-                numberOfLines={1}
-                testID={`${testID}-card-${item.id}-meta`}
-              >
-                {metaSummary}
-              </AppText>
-            </View>
-          )}
-        </View>
-      </AppCard>
+        showSampleBadge={showSampleBadge}
+      />
     );
   };
 

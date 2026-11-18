@@ -266,3 +266,31 @@ export function formatDiscoveryMetadataSummary(item: DiscoveryItem): string {
 
   return parts.join(' · ');
 }
+
+/**
+ * Verified, genuine navigation routes available within Waymark Mobile.
+ * Used defensively to ensure Discovery actions only navigate to genuine screens.
+ */
+export const VERIFIED_DISCOVERY_ROUTES: ReadonlySet<string> = new Set([
+  '/(tabs)',
+  '/(tabs)/index',
+  '/(tabs)/map',
+  '/(tabs)/journey',
+  '/(tabs)/oracle',
+  '/(tabs)/comfort',
+  '/',
+  '/map',
+  '/journey',
+  '/oracle',
+  '/comfort'
+]);
+
+/**
+ * Validates whether a route string matches an active verified navigation destination.
+ */
+export function isValidDiscoveryRoute(route?: string): boolean {
+  if (!route || typeof route !== 'string') {
+    return false;
+  }
+  return VERIFIED_DISCOVERY_ROUTES.has(route.trim());
+}
