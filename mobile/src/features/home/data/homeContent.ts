@@ -15,14 +15,14 @@ export const DEFAULT_QUICK_PLACES: HomeQuickPlaceNode[] = [
 ];
 
 /**
- * Standard Home Screen Data reflecting current foundation capabilities.
+ * Standard Home Screen Data reflecting user-friendly mobile hero and foundation capabilities.
  */
 export const defaultHomeContent: HomeScreenData = {
   hero: {
-    eyebrow: 'FOUNDATION READY · SATHU FEATURE 01',
-    title: 'Waymark',
-    titleHighlight: 'Mobile',
-    subtitle: 'Production-quality native mobile foundation for planetary transit telemetry.'
+    eyebrow: 'Good morning, navigator',
+    title: 'Where would you like to',
+    titleHighlight: 'go?',
+    subtitle: 'One trip. Every way to travel. Bus, train, air and smart roads, planned together.'
   },
   suggestion: {
     id: 'suggested-kdu-kandy',
@@ -60,10 +60,11 @@ export const defaultHomeContent: HomeScreenData = {
 };
 
 /**
- * User-facing production introductory content for Home (used as Feature 03.2 hero foundation).
+ * User-facing production introductory content for Home.
+ * Aligns with verified Waymark 2100 branding and user experience.
  */
 export const userFacingHomeIntro = {
-  eyebrow: 'PLANETARY TRANSIT NETWORK',
+  eyebrow: 'Good morning, navigator',
   title: 'Where would you like to',
   titleHighlight: 'go?',
   subtitle: 'One trip. Every way to travel. Bus, train, air and smart roads, planned together.'
