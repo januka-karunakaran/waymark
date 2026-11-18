@@ -78,6 +78,11 @@ export interface ScreenWrapperProps {
    * Custom container style applied to the inner body view.
    */
   style?: ViewStyle;
+
+  /**
+   * Test identifier.
+   */
+  testID?: string;
 }
 
 /**
@@ -97,10 +102,11 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   onBack,
   headerActions,
   showHeader = true,
-  style
+  style,
+  testID
 }) => {
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']} testID={testID}>
       <StatusBar style="light" backgroundColor={theme.colors.abyssVoid} />
 
       {/* Top Header */}
@@ -118,10 +124,15 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
 
       {/* Real-time Telemetry Strip */}
       {showTelemetryStrip && (telemetryStatus || telemetryLatency) ? (
-        <View style={styles.telemetryStrip} testID="screen-telemetry-strip">
+        <View
+          style={styles.telemetryStrip}
+          testID="screen-telemetry-strip"
+          accessibilityRole="summary"
+          accessibilityLabel={`Telemetry: ${telemetryStatus}${telemetryLatency ? `, ${telemetryLatency}` : ''}`}
+        >
           {telemetryStatus ? (
             <View style={styles.telemetryStatusGroup}>
-              <View style={styles.telemetryDot} />
+              <View style={styles.telemetryDot} accessible={false} />
               <Text style={styles.telemetryStatusText}>{telemetryStatus}</Text>
             </View>
           ) : (
