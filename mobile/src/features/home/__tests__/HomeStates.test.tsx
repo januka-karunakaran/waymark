@@ -223,7 +223,7 @@ describe('Home States, Reliability & QA (Task 3.1.4)', () => {
 
       expect(
         screen.getByText(
-          'TRANSIT LINK OFFLINE · RUNNING ON LOCAL TELEMETRY CACHE'
+          'TRANSIT LINK OFFLINE · OPERATING WITH LOCAL DEFAULTS'
         )
       ).toBeTruthy();
 

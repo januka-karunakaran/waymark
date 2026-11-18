@@ -35,6 +35,14 @@ import { defaultHomeContent } from '../data/homeContent';
 import { sanitizeHomeScreenData } from '../utils/homePresentation';
 import { HomeHero } from './HomeHero';
 import { HomeSection } from './HomeSection';
+import {
+  DiscoveryCategory,
+  DiscoveryCard,
+  DiscoveryItem,
+  DiscoveryPayload,
+  DiscoverySection,
+  defaultDiscoveryPayload
+} from '../../discovery';
 
 export interface HomeContentProps {
   /**
@@ -92,6 +100,23 @@ export interface HomeContentProps {
    * Action callback triggered when user taps a quick place node.
    */
   onSelectPlace?: (place: HomeQuickPlaceNode) => void;
+
+  /**
+   * Optional Discovery dataset containing multimodal transit corridors, hubs, modes, and experiences.
+   * If omitted, falls back to default verified discovery dataset.
+   * Pass null to explicitly disable discovery sections.
+   */
+  discoveryPayload?: DiscoveryPayload | null;
+
+  /**
+   * Action callback triggered when user taps an interactive discovery card.
+   */
+  onSelectDiscoveryItem?: (item: DiscoveryItem) => void;
+
+  /**
+   * Action callback triggered when user taps a discovery section header action.
+   */
+  onSelectDiscoveryCategory?: (category: DiscoveryCategory) => void;
 
   /**
    * Optional pull-to-refresh callback.
@@ -157,6 +182,9 @@ export const HomeContent: React.FC<HomeContentProps> = ({
   emptyMessage,
   onSelectSuggestion,
   onSelectPlace,
+  discoveryPayload,
+  onSelectDiscoveryItem,
+  onSelectDiscoveryCategory,
   onRefresh,
   refreshing = false,
   contentContainerStyle,
@@ -169,6 +197,11 @@ export const HomeContent: React.FC<HomeContentProps> = ({
 
   const effectiveMode = themeMode ?? defaultTheme.mode;
   const activeTheme = effectiveMode === 'light' ? lightTheme : darkTheme;
+
+  const effectiveDiscoveryPayload =
+    discoveryPayload === null
+      ? null
+      : discoveryPayload ?? defaultDiscoveryPayload;
 
   // 1. Sanitize incoming data to guard against malformed or corrupted payloads
   const sanitizedData = React.useMemo(() => {
@@ -441,7 +474,38 @@ export const HomeContent: React.FC<HomeContentProps> = ({
           </HomeSection>
         )}
 
-      {/* 4. Telemetry Foundation Architecture Diagnostics */}
+      {/* 4. Multimodal Transit Discovery Sections (Corridors, Hubs, Modes, Experiences) */}
+      {Boolean(effectiveDiscoveryPayload?.sections?.length) && (
+        <View style={styles.discoveryGroup} testID="home-discovery-group">
+          {effectiveDiscoveryPayload!.sections.map((section) => (
+            <DiscoverySection
+              key={section.id}
+              section={section}
+              layout="horizontal"
+              themeMode={themeMode}
+              testID={`home-discovery-${section.id}`}
+              actionLabel={section.category === 'corridors' ? 'View all' : 'Explore'}
+              onAction={onSelectDiscoveryCategory}
+              renderItem={
+                onSelectDiscoveryItem
+                  ? (item) => (
+                      <DiscoveryCard
+                        key={item.id}
+                        item={item}
+                        layout="horizontal"
+                        themeMode={themeMode}
+                        testID={`home-discovery-${section.id}-card-${item.id}`}
+                        onPress={onSelectDiscoveryItem}
+                      />
+                    )
+                  : undefined
+              }
+            />
+          ))}
+        </View>
+      )}
+
+      {/* 5. Telemetry Foundation Architecture Diagnostics */}
       {Boolean(activeContent.architectureStatus) && (
         <HomeSection
           eyebrow="AVIONICS STATUS"
@@ -553,6 +617,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     gap: defaultTheme.spacing.spaceLg
+  },
+  discoveryGroup: {
+    gap: defaultTheme.spacing.spaceMd
   },
   stateWrapper: {
     flex: 1,
