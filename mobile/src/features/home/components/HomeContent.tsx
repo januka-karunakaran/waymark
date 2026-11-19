@@ -33,7 +33,7 @@ import {
 } from '../types';
 import { defaultHomeContent } from '../data/homeContent';
 import { sanitizeHomeScreenData } from '../utils/homePresentation';
-import { resolveHomeQuickAction, ResolvedQuickAction } from '../actions';
+import { resolveHomeQuickAction } from '../actions';
 import { HomeHero } from './HomeHero';
 import { HomeSection } from './HomeSection';
 import {

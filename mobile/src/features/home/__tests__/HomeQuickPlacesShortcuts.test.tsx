@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
 import HomeScreen from '../../../../app/(tabs)/index';
 import { HomeContent } from '../components/HomeContent';
@@ -136,7 +136,11 @@ describe('Feature 03.3 — Functional Quick Destination Shortcuts (Task 3.3.2)',
       fireEvent.press(kandyChip);
 
       expect(mockPush).toHaveBeenCalledTimes(1);
-      expect(mockPush).toHaveBeenCalledWith('/(tabs)/journey');
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pathname: '/(tabs)/journey'
+        })
+      );
       expect(screen.queryByTestId('home-guidance-banner')).toBeNull();
     });
 
@@ -145,11 +149,19 @@ describe('Feature 03.3 — Functional Quick Destination Shortcuts (Task 3.3.2)',
 
       const colomboChip = screen.getByTestId('quick-place-place-colombo');
       fireEvent.press(colomboChip);
-      expect(mockPush).toHaveBeenCalledWith('/(tabs)/journey');
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pathname: '/(tabs)/journey'
+        })
+      );
 
       const airportChip = screen.getByTestId('quick-place-place-airport');
       fireEvent.press(airportChip);
-      expect(mockPush).toHaveBeenCalledWith('/(tabs)/journey');
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pathname: '/(tabs)/journey'
+        })
+      );
     });
 
     it('prevents duplicate navigation calls when rapidly tapped (double-click guard)', () => {
@@ -164,7 +176,11 @@ describe('Feature 03.3 — Functional Quick Destination Shortcuts (Task 3.3.2)',
 
       // Only one navigation push should occur
       expect(mockPush).toHaveBeenCalledTimes(1);
-      expect(mockPush).toHaveBeenCalledWith('/(tabs)/journey');
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pathname: '/(tabs)/journey'
+        })
+      );
     });
 
     it('shows truthful unconfigured guidance banner when Home shortcut is tapped', () => {
@@ -239,7 +255,11 @@ describe('Feature 03.3 — Functional Quick Destination Shortcuts (Task 3.3.2)',
       fireEvent.press(kandyChip);
 
       expect(screen.queryByTestId('home-guidance-banner')).toBeNull();
-      expect(mockPush).toHaveBeenCalledWith('/(tabs)/journey');
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pathname: '/(tabs)/journey'
+        })
+      );
     });
 
     it('handles unsupported or custom place nodes safely without throwing errors', () => {
@@ -255,10 +275,12 @@ describe('Feature 03.3 — Functional Quick Destination Shortcuts (Task 3.3.2)',
         quickPlaces: [unsupportedNode]
       };
 
-      render(<HomeScreen />);
+      render(<HomeContent data={customContent} />);
 
       // Verify rendering is safe
-      expect(screen.getByTestId('quick-place-place-home')).toBeTruthy();
+      expect(
+        screen.getByTestId('quick-place-place-unsupported-node')
+      ).toBeTruthy();
     });
   });
 

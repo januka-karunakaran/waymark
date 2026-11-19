@@ -30,7 +30,14 @@ export default function HomeScreen() {
 
   const handleSelectSuggestion = (suggestion: HomeSuggestionContent) => {
     if (suggestion.targetScreen === 'journey') {
-      router.push('/(tabs)/journey');
+      router.push({
+        pathname: '/(tabs)/journey',
+        params: {
+          destinationId: suggestion.id,
+          destinationName: suggestion.title,
+          source: 'suggested_corridor'
+        }
+      } as unknown as Href);
     }
   };
 
@@ -45,7 +52,20 @@ export default function HomeScreen() {
         isNavigatingRef.current = true;
         setIsNavigating(true);
         setGuidanceMessage(null);
-        router.push(resolved.targetRoute as Href);
+
+        if (resolved.destinationContext) {
+          router.push({
+            pathname: resolved.targetRoute as unknown as Href,
+            params: {
+              destinationId: resolved.destinationContext.destinationId,
+              destinationName: resolved.destinationContext.destinationName,
+              source: 'quick_shortcut'
+            }
+          } as unknown as Href);
+        } else {
+          router.push(resolved.targetRoute as Href);
+        }
+
         setTimeout(() => {
           isNavigatingRef.current = false;
           setIsNavigating(false);
