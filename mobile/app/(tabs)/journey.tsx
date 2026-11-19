@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MapPin, Compass } from 'lucide-react-native';
@@ -25,13 +25,13 @@ export default function JourneyScreen() {
     setIsDismissed(false);
   }, [params.destinationId]);
 
-  const handleClearDestination = () => {
+  const handleClearDestination = useCallback(() => {
     setIsDismissed(true);
-  };
+  }, []);
 
-  const handleReturnHome = () => {
+  const handleReturnHome = useCallback(() => {
     router.push('/(tabs)');
-  };
+  }, [router]);
 
   return (
     <ScreenWrapper title="MISSION ROUTE" subtitle="ACTIVE TRANSIT TIMELINE">

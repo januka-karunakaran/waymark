@@ -177,7 +177,7 @@ function renderPlaceIcon(iconName: string, color: string) {
  * Implements smooth vertical scrolling, loading/empty/error states, tablet centering,
  * bottom-tab buffer margins, and explicit sample data demarcation.
  */
-export const HomeContent: React.FC<HomeContentProps> = ({
+const HomeContentBase: React.FC<HomeContentProps> = ({
   data = defaultHomeContent,
   isLoading = false,
   loadingMessage,
@@ -204,7 +204,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({
   const isCompact = width > 0 && width < 360;
 
   const scrollViewRef = React.useRef<ScrollView>(null);
-  const [discoveryOffsetY, setDiscoveryOffsetY] = React.useState<number | null>(null);
+  const discoveryOffsetYRef = React.useRef<number | null>(null);
 
   const effectiveMode = themeMode ?? defaultTheme.mode;
   const activeTheme = effectiveMode === 'light' ? lightTheme : darkTheme;
@@ -229,16 +229,52 @@ export const HomeContent: React.FC<HomeContentProps> = ({
       if (isActionPending) return;
       const resolved = resolveHomeQuickAction(place);
       if (resolved.type === 'in_page_focus') {
-        if (discoveryOffsetY !== null && scrollViewRef.current) {
+        if (discoveryOffsetYRef.current !== null && scrollViewRef.current) {
           scrollViewRef.current.scrollTo({
-            y: Math.max(0, discoveryOffsetY - 16),
+            y: Math.max(0, discoveryOffsetYRef.current - 16),
             animated: true
           });
         }
       }
       onSelectPlace?.(place);
     },
-    [isActionPending, discoveryOffsetY, onSelectPlace]
+    [isActionPending, onSelectPlace]
+  );
+
+  const responsiveInnerStyle = React.useMemo<ViewStyle>(
+    () => ({
+      maxWidth: isTablet ? 680 : '100%',
+      alignSelf: isTablet ? 'center' : 'stretch',
+      width: '100%'
+    }),
+    [isTablet]
+  );
+
+  const computedContentContainerStyle = React.useMemo(
+    () => [
+      styles.scrollContent,
+      {
+        paddingHorizontal: isCompact
+          ? activeTheme.spacing.gutterMobile
+          : activeTheme.spacing.margin,
+        paddingTop: activeTheme.spacing.spaceMd,
+        paddingBottom:
+          activeTheme.spacing.layout.bottomNavHeight +
+          activeTheme.spacing.spaceXl
+      },
+      responsiveInnerStyle,
+      contentContainerStyle
+    ],
+    [
+      isCompact,
+      activeTheme.spacing.gutterMobile,
+      activeTheme.spacing.margin,
+      activeTheme.spacing.spaceMd,
+      activeTheme.spacing.layout.bottomNavHeight,
+      activeTheme.spacing.spaceXl,
+      responsiveInnerStyle,
+      contentContainerStyle
+    ]
   );
 
   // 2. Evaluate state flags
@@ -323,30 +359,11 @@ export const HomeContent: React.FC<HomeContentProps> = ({
 
   const activeContent = sanitizedData;
 
-  const responsiveInnerStyle: ViewStyle = {
-    maxWidth: isTablet ? 680 : '100%',
-    alignSelf: isTablet ? 'center' : 'stretch',
-    width: '100%'
-  };
-
   return (
     <ScrollView
       ref={scrollViewRef}
       style={styles.scrollView}
-      contentContainerStyle={[
-        styles.scrollContent,
-        {
-          paddingHorizontal: isCompact
-            ? activeTheme.spacing.gutterMobile
-            : activeTheme.spacing.margin,
-          paddingTop: activeTheme.spacing.spaceMd,
-          paddingBottom:
-            activeTheme.spacing.layout.bottomNavHeight +
-            activeTheme.spacing.spaceXl
-        },
-        responsiveInnerStyle,
-        contentContainerStyle
-      ]}
+      contentContainerStyle={computedContentContainerStyle}
       showsVerticalScrollIndicator={false}
       refreshControl={
         onRefresh ? (
@@ -531,7 +548,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({
           style={styles.discoveryGroup}
           testID="home-discovery-group"
           onLayout={(e) => {
-            setDiscoveryOffsetY(e.nativeEvent.layout.y);
+            discoveryOffsetYRef.current = e.nativeEvent.layout.y;
           }}
         >
           {effectiveDiscoveryPayload!.sections.map((section) => (
@@ -666,6 +683,8 @@ export const HomeContent: React.FC<HomeContentProps> = ({
     </ScrollView>
   );
 };
+
+export const HomeContent = React.memo(HomeContentBase);
 
 const styles = StyleSheet.create({
   scrollView: {

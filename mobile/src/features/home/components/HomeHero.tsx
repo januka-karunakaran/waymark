@@ -47,7 +47,7 @@ export interface HomeHeroProps {
  * Implements verified Waymark 2100 branding, clear visual hierarchy, accessible header roles,
  * dynamic text scaling, and theme responsiveness without duplicating top screen navigation headers.
  */
-export const HomeHero: React.FC<HomeHeroProps> = ({
+const HomeHeroBase: React.FC<HomeHeroProps> = ({
   content,
   style,
   testID = 'home-hero',
@@ -137,6 +137,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
     </View>
   );
 };
+
+export const HomeHero = React.memo(HomeHeroBase);
 
 const styles = StyleSheet.create({
   container: {
