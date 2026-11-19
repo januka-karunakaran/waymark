@@ -1,12 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
-import { useLocalSearchParams } from 'expo-router';
 import HomeScreen from '../../../../app/(tabs)/index';
 import JourneyScreen from '../../../../app/(tabs)/journey';
 import {
   validateJourneyParams,
   createJourneyRouteParams,
-  ALLOWED_JOURNEY_DESTINATIONS,
   MAX_PARAM_STRING_LENGTH
 } from '../actions/journeyParams';
 
