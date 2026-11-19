@@ -11,19 +11,25 @@ import {
   HomeContent,
   HomeQuickPlaceNode,
   HomeSuggestionContent,
-  resolveHomeQuickAction
+  resolveHomeQuickAction,
+  useHomeData
 } from '../../src/features/home';
 import {
   DiscoveryCategory,
-  DiscoveryItem,
-  defaultDiscoveryPayload
+  DiscoveryItem
 } from '../../src/features/discovery';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [content, setContent] = useState(defaultHomeContent);
-  const [discoveryPayload] = useState(defaultDiscoveryPayload);
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    homeData,
+    discoveryPayload,
+    isLoading,
+    isRefreshing,
+    homeError,
+    refresh,
+    reload
+  } = useHomeData();
   const [guidanceMessage, setGuidanceMessage] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const isNavigatingRef = useRef(false);
@@ -124,17 +130,9 @@ export default function HomeScreen() {
     }
   };
 
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    // Local simulation: preserves offline resilience without faking live API responses
-    setTimeout(() => {
-      setContent((prev) => ({
-        ...prev,
-        lastUpdatedTimestamp: Date.now()
-      }));
-      setRefreshing(false);
-    }, 300);
-  }, []);
+  const handleRefresh = useCallback(async () => {
+    await refresh();
+  }, [refresh]);
 
   return (
     <ScreenWrapper>
@@ -174,14 +172,18 @@ export default function HomeScreen() {
         </View>
       )}
       <HomeContent
-        data={content}
+        data={homeData ?? defaultHomeContent}
         discoveryPayload={discoveryPayload}
+        isLoading={isLoading && !homeData}
+        isError={Boolean(homeError) && !homeData}
+        errorMessage={homeError?.message}
+        onRetry={reload}
         onSelectSuggestion={handleSelectSuggestion}
         onSelectPlace={handleSelectPlace}
         onSelectDiscoveryItem={handleSelectDiscoveryItem}
         onSelectDiscoveryCategory={handleSelectDiscoveryCategory}
         onRefresh={handleRefresh}
-        refreshing={refreshing}
+        refreshing={isRefreshing}
         isActionPending={isNavigating}
       />
     </ScreenWrapper>
