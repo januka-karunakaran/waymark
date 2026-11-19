@@ -33,6 +33,7 @@ import {
 } from '../types';
 import { defaultHomeContent } from '../data/homeContent';
 import { sanitizeHomeScreenData } from '../utils/homePresentation';
+import { resolveHomeQuickAction, ResolvedQuickAction } from '../actions';
 import { HomeHero } from './HomeHero';
 import { HomeSection } from './HomeSection';
 import {
@@ -100,6 +101,12 @@ export interface HomeContentProps {
    * Action callback triggered when user taps a quick place node.
    */
   onSelectPlace?: (place: HomeQuickPlaceNode) => void;
+
+  /**
+   * Whether a navigation action is currently pending (disables buttons to prevent double triggers).
+   * @default false
+   */
+  isActionPending?: boolean;
 
   /**
    * Optional Discovery dataset containing multimodal transit corridors, hubs, modes, and experiences.
@@ -189,11 +196,15 @@ export const HomeContent: React.FC<HomeContentProps> = ({
   refreshing = false,
   contentContainerStyle,
   testID = 'home-content',
-  themeMode
+  themeMode,
+  isActionPending = false
 }) => {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const isCompact = width > 0 && width < 360;
+
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  const [discoveryOffsetY, setDiscoveryOffsetY] = React.useState<number | null>(null);
 
   const effectiveMode = themeMode ?? defaultTheme.mode;
   const activeTheme = effectiveMode === 'light' ? lightTheme : darkTheme;
@@ -212,6 +223,23 @@ export const HomeContent: React.FC<HomeContentProps> = ({
       return defaultHomeContent;
     }
   }, [data]);
+
+  const handlePlacePress = React.useCallback(
+    (place: HomeQuickPlaceNode) => {
+      if (isActionPending) return;
+      const resolved = resolveHomeQuickAction(place);
+      if (resolved.type === 'in_page_focus') {
+        if (discoveryOffsetY !== null && scrollViewRef.current) {
+          scrollViewRef.current.scrollTo({
+            y: Math.max(0, discoveryOffsetY - 16),
+            animated: true
+          });
+        }
+      }
+      onSelectPlace?.(place);
+    },
+    [isActionPending, discoveryOffsetY, onSelectPlace]
+  );
 
   // 2. Evaluate state flags
   const isCurrentlyLoading =
@@ -303,6 +331,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({
 
   return (
     <ScrollView
+      ref={scrollViewRef}
       style={styles.scrollView}
       contentContainerStyle={[
         styles.scrollContent,
@@ -440,43 +469,71 @@ export const HomeContent: React.FC<HomeContentProps> = ({
               style={styles.quickPlacesGrid}
               testID="home-quick-places-grid"
             >
-              {activeContent.quickPlaces.map((place) => (
-                <Pressable
-                  key={place.id}
-                  onPress={() => onSelectPlace?.(place)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Travel to ${place.destination}`}
-                  testID={`quick-place-${place.id}`}
-                  style={({ pressed }) => [
-                    styles.placeChip,
-                    pressed && styles.placeChipPressed
-                  ]}
-                >
-                  <View style={styles.placeIconWrapper}>
-                    {renderPlaceIcon(
-                      place.iconName,
-                      activeTheme.colors.beaconGold
-                    )}
-                  </View>
-                  <AppText
-                    variant="caption"
-                    weight="semibold"
-                    color="primary"
-                    themeMode={themeMode}
-                    numberOfLines={1}
-                    style={styles.placeLabel}
+              {activeContent.quickPlaces.map((place) => {
+                const isUnconfigured =
+                  place.id === 'place-home' || place.id === 'place-work';
+                const isMore = place.id === 'place-more';
+
+                const accessibilityLabel = isUnconfigured
+                  ? `${place.label}, saved destination unconfigured`
+                  : isMore
+                  ? `${place.label}, explore multimodal transit directory`
+                  : `Travel to ${place.destination}${place.isPopular ? ', popular corridor' : ''}`;
+
+                const accessibilityHint = isUnconfigured
+                  ? 'Displays setup guidance for custom locations'
+                  : isMore
+                  ? 'Scrolls to multimodal transit discovery directory'
+                  : 'Navigates to journey planner';
+
+                return (
+                  <Pressable
+                    key={place.id}
+                    onPress={() => handlePlacePress(place)}
+                    accessibilityRole="button"
+                    accessibilityLabel={accessibilityLabel}
+                    accessibilityHint={accessibilityHint}
+                    accessibilityState={{ disabled: Boolean(isActionPending) }}
+                    disabled={isActionPending}
+                    testID={`quick-place-${place.id}`}
+                    style={({ pressed }) => [
+                      styles.placeChip,
+                      pressed && styles.placeChipPressed,
+                      isActionPending && styles.placeChipDisabled
+                    ]}
                   >
-                    {place.label}
-                  </AppText>
-                </Pressable>
-              ))}
+                    <View style={styles.placeIconWrapper}>
+                      {renderPlaceIcon(
+                        place.iconName,
+                        activeTheme.colors.beaconGold
+                      )}
+                    </View>
+                    <AppText
+                      variant="caption"
+                      weight="semibold"
+                      color="primary"
+                      themeMode={themeMode}
+                      numberOfLines={2}
+                      style={styles.placeLabel}
+                    >
+                      {place.label}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
             </View>
           </HomeSection>
         )}
 
       {/* 4. Multimodal Transit Discovery Sections (Corridors, Hubs, Modes, Experiences) */}
       {Boolean(effectiveDiscoveryPayload?.sections?.length) && (
-        <View style={styles.discoveryGroup} testID="home-discovery-group">
+        <View
+          style={styles.discoveryGroup}
+          testID="home-discovery-group"
+          onLayout={(e) => {
+            setDiscoveryOffsetY(e.nativeEvent.layout.y);
+          }}
+        >
           {effectiveDiscoveryPayload!.sections.map((section) => (
             <DiscoverySection
               key={section.id}
@@ -704,6 +761,9 @@ const styles = StyleSheet.create({
   placeChipPressed: {
     backgroundColor: defaultTheme.colors.hudGhostSubtle,
     borderColor: defaultTheme.colors.beaconGold
+  },
+  placeChipDisabled: {
+    opacity: 0.5
   },
   placeIconWrapper: {
     width: 28,

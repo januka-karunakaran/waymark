@@ -1,12 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter, Href } from 'expo-router';
+import { Info, X } from 'lucide-react-native';
 import { ScreenWrapper } from '../../src/components/ScreenWrapper';
 import { NetworkStatusBanner } from '../../src/components/NetworkStatusBanner';
+import { AppText } from '../../src/components/typography';
+import { theme } from '../../src/theme';
 import {
   defaultHomeContent,
   HomeContent,
   HomeQuickPlaceNode,
-  HomeSuggestionContent
+  HomeSuggestionContent,
+  resolveHomeQuickAction
 } from '../../src/features/home';
 import {
   DiscoveryCategory,
@@ -19,6 +24,9 @@ export default function HomeScreen() {
   const [content, setContent] = useState(defaultHomeContent);
   const [discoveryPayload] = useState(defaultDiscoveryPayload);
   const [refreshing, setRefreshing] = useState(false);
+  const [guidanceMessage, setGuidanceMessage] = useState<string | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const isNavigatingRef = useRef(false);
 
   const handleSelectSuggestion = (suggestion: HomeSuggestionContent) => {
     if (suggestion.targetScreen === 'journey') {
@@ -26,11 +34,54 @@ export default function HomeScreen() {
     }
   };
 
-  const handleSelectPlace = (place: HomeQuickPlaceNode) => {
-    if (place.id === 'place-airport' || place.destination) {
-      router.push('/(tabs)/journey');
-    }
-  };
+  const handleSelectPlace = useCallback(
+    (place: HomeQuickPlaceNode) => {
+      // Guard against double triggers / rapid clicks
+      if (isNavigatingRef.current) return;
+
+      const resolved = resolveHomeQuickAction(place);
+
+      if (resolved.type === 'navigate' && resolved.targetRoute) {
+        isNavigatingRef.current = true;
+        setIsNavigating(true);
+        setGuidanceMessage(null);
+        router.push(resolved.targetRoute as Href);
+        setTimeout(() => {
+          isNavigatingRef.current = false;
+          setIsNavigating(false);
+        }, 500);
+      } else if (resolved.type === 'unconfigured') {
+        const msg =
+          resolved.userMessage ||
+          'Home and Work locations have not been saved yet. Custom locations will be available in profile settings.';
+        setGuidanceMessage(msg);
+        try {
+          AccessibilityInfo.announceForAccessibility(msg);
+        } catch {
+          // Graceful fallback when AccessibilityInfo is not available
+        }
+      } else if (resolved.type === 'in_page_focus') {
+        setGuidanceMessage(null);
+        try {
+          AccessibilityInfo.announceForAccessibility(
+            'Jumped to Multimodal Transit Discovery section'
+          );
+        } catch {
+          // Graceful fallback
+        }
+      } else {
+        if (resolved.userMessage) {
+          setGuidanceMessage(resolved.userMessage);
+          try {
+            AccessibilityInfo.announceForAccessibility(resolved.userMessage);
+          } catch {
+            // Graceful fallback
+          }
+        }
+      }
+    },
+    [router]
+  );
 
   const handleSelectDiscoveryItem = (item: DiscoveryItem) => {
     if (item.actionDestination) {
@@ -68,6 +119,40 @@ export default function HomeScreen() {
   return (
     <ScreenWrapper>
       <NetworkStatusBanner />
+      {Boolean(guidanceMessage) && (
+        <View
+          style={styles.guidanceBanner}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          testID="home-guidance-banner"
+        >
+          <View style={styles.guidanceContent}>
+            <Info
+              size={16}
+              color={theme.colors.beaconGold}
+              style={styles.guidanceIcon}
+            />
+            <AppText
+              variant="caption"
+              weight="semibold"
+              style={styles.guidanceText}
+              testID="home-guidance-text"
+            >
+              {guidanceMessage}
+            </AppText>
+          </View>
+          <Pressable
+            onPress={() => setGuidanceMessage(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss guidance notice"
+            testID="home-guidance-dismiss"
+            hitSlop={8}
+            style={styles.guidanceDismissButton}
+          >
+            <X size={14} color={theme.colors.textMuted} />
+          </Pressable>
+        </View>
+      )}
       <HomeContent
         data={content}
         discoveryPayload={discoveryPayload}
@@ -77,7 +162,40 @@ export default function HomeScreen() {
         onSelectDiscoveryCategory={handleSelectDiscoveryCategory}
         onRefresh={handleRefresh}
         refreshing={refreshing}
+        isActionPending={isNavigating}
       />
     </ScreenWrapper>
   );
 }
+
+const styles = StyleSheet.create({
+  guidanceBanner: {
+    backgroundColor: theme.colors.deckInk,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.beaconGold,
+    paddingVertical: theme.spacing.spaceSm,
+    paddingHorizontal: theme.spacing.spaceMd,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.spaceSm
+  },
+  guidanceContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.spaceSm
+  },
+  guidanceIcon: {
+    flexShrink: 0
+  },
+  guidanceText: {
+    flex: 1,
+    color: theme.colors.beaconGold
+  },
+  guidanceDismissButton: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center'
+  }
+});
