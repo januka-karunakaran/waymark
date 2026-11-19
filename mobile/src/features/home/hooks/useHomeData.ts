@@ -1,7 +1,7 @@
 /**
  * Waymark 2100 — Home Data State Management Hook
  * Provider-driven asynchronous state controller managing Home and Discovery datasets,
- * lifecycle safety, pull-to-refresh, error recovery, and truthful sample provenance.
+ * offline resilience, error recovery, lifecycle safety, and truthful sample provenance.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -15,6 +15,7 @@ import {
   defaultDiscoveryProvider,
   defaultDiscoveryPayload
 } from '../../discovery';
+import { NetworkStatus } from '../../../hooks/useNetworkStatus';
 
 /**
  * High-level execution readiness state for the Home screen.
@@ -25,6 +26,29 @@ export type HomeLoadStatus =
   | 'success'
   | 'empty'
   | 'error';
+
+/**
+ * Filters out raw JavaScript stack traces, memory addresses, or file paths
+ * to provide human-readable, secure user-facing messages.
+ */
+export function formatUserFacingError(error: unknown): string {
+  if (!error) return 'An unexpected error occurred while loading transit data.';
+  const rawMessage = error instanceof Error ? error.message : String(error);
+
+  if (
+    rawMessage.includes('TypeError') ||
+    rawMessage.includes('ReferenceError') ||
+    rawMessage.includes('SyntaxError') ||
+    rawMessage.includes('JSON.parse') ||
+    rawMessage.includes('at ') ||
+    rawMessage.includes('/') ||
+    rawMessage.includes('\\')
+  ) {
+    return 'Transit telemetry service temporarily unavailable. Please retry.';
+  }
+
+  return rawMessage;
+}
 
 /**
  * Options for configuring the useHomeData hook.
@@ -59,6 +83,18 @@ export interface UseHomeDataOptions {
    * Defaults to true.
    */
   autoLoad?: boolean;
+
+  /**
+   * Explicit network status override (used for testing offline workflows).
+   * Defaults to the live useNetworkStatus hook.
+   */
+  networkStatus?: NetworkStatus;
+
+  /**
+   * Automatically retry query when connectivity is restored after an error.
+   * Defaults to true.
+   */
+  autoRecoverOnReconnect?: boolean;
 }
 
 /**
@@ -85,8 +121,16 @@ export interface UseHomeDataState {
   isEmpty: boolean;
   /** True if data provenance is marked as illustrative sample data */
   isSample: boolean;
+  /** Whether the device is currently disconnected from network */
+  isOffline: boolean;
+  /** Indicates whether the current content is preserved from a previous successful read or fallback */
+  isUsingFallback: boolean;
   /** Last update timestamp reported by the source provider (never fabricated) */
   lastUpdatedTimestamp?: number;
+  /** Local client timestamp when data was last successfully synchronized */
+  lastSuccessfulSyncTimestamp?: number;
+  /** Local client timestamp when sync was last attempted */
+  lastAttemptedSyncTimestamp?: number;
 }
 
 /**
@@ -112,7 +156,8 @@ function isHomeDataEmpty(data: HomeScreenData | null): boolean {
 }
 
 /**
- * Asynchronous state management hook for Waymark Home and Discovery integration.
+ * Asynchronous state management hook for Waymark Home and Discovery integration
+ * with full offline tolerance, defensive fallback preservation, and error recovery.
  */
 export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn {
   const {
@@ -120,8 +165,12 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
     discoveryProvider = defaultDiscoveryProvider,
     initialHomeData = defaultHomeContent,
     initialDiscoveryPayload = defaultDiscoveryPayload,
-    autoLoad = true
+    autoLoad = true,
+    networkStatus,
+    autoRecoverOnReconnect = true
   } = options;
+
+  const isOffline = networkStatus ? !networkStatus.isConnected : false;
 
   const [homeData, setHomeData] = useState<HomeScreenData | null>(initialHomeData);
   const [discoveryPayload, setDiscoveryPayload] = useState<DiscoveryPayload | null>(
@@ -134,14 +183,23 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [homeError, setHomeError] = useState<Error | null>(null);
   const [discoveryError, setDiscoveryError] = useState<Error | null>(null);
+  const [isUsingFallback, setIsUsingFallback] = useState<boolean>(false);
+  const [lastSuccessfulSyncTimestamp, setLastSuccessfulSyncTimestamp] = useState<number | undefined>(
+    undefined
+  );
+  const [lastAttemptedSyncTimestamp, setLastAttemptedSyncTimestamp] = useState<number | undefined>(
+    undefined
+  );
 
-  // Lifecycle references for race-condition and unmount protection
+  // Lifecycle and in-memory fallback preservation refs
   const isMountedRef = useRef<boolean>(true);
   const requestIdRef = useRef<number>(0);
   const isRefreshingRef = useRef<boolean>(false);
-  const isLoadingRef = useRef<boolean>(false);
   const homeDataRef = useRef<HomeScreenData | null>(initialHomeData);
   const discoveryPayloadRef = useRef<DiscoveryPayload | null>(initialDiscoveryPayload);
+  const lastSuccessfulHomeRef = useRef<HomeScreenData | null>(initialHomeData);
+  const lastSuccessfulDiscoveryRef = useRef<DiscoveryPayload | null>(initialDiscoveryPayload);
+  const prevConnectedRef = useRef<boolean>(networkStatus?.isConnected ?? true);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -158,9 +216,10 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
         isRefreshingRef.current = true;
         setIsRefreshing(true);
       } else {
-        isLoadingRef.current = true;
         setIsLoading(true);
       }
+
+      setLastAttemptedSyncTimestamp(Date.now());
 
       // Generate monotonic request ID for stale-response protection
       const currentRequestId = ++requestIdRef.current;
@@ -184,32 +243,42 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
           const raw = homeResult.value;
           resolvedHome = isValidHomeScreenData(raw) ? raw : sanitizeHomeScreenData(raw);
           homeDataRef.current = resolvedHome;
+          lastSuccessfulHomeRef.current = resolvedHome;
           setHomeData(resolvedHome);
           setHomeError(null);
+          setIsUsingFallback(false);
+          setLastSuccessfulSyncTimestamp(Date.now());
         } else {
-          resolvedHomeErr =
-            homeResult.reason instanceof Error
-              ? homeResult.reason
-              : new Error(String(homeResult.reason));
+          const formatted = formatUserFacingError(homeResult.reason);
+          resolvedHomeErr = new Error(formatted);
           setHomeError(resolvedHomeErr);
-          // Preserve previously existing home data on failure
+
+          // Defensive fallback preservation: keep previous data if present
+          if (lastSuccessfulHomeRef.current) {
+            setHomeData(lastSuccessfulHomeRef.current);
+            setIsUsingFallback(true);
+          } else {
+            setHomeData(null);
+          }
         }
 
         if (discoveryResult.status === 'fulfilled') {
           discoveryPayloadRef.current = discoveryResult.value;
+          lastSuccessfulDiscoveryRef.current = discoveryResult.value;
           setDiscoveryPayload(discoveryResult.value);
           setDiscoveryError(null);
         } else {
-          const discErr =
-            discoveryResult.reason instanceof Error
-              ? discoveryResult.reason
-              : new Error(String(discoveryResult.reason));
-          setDiscoveryError(discErr);
+          const formattedDisc = formatUserFacingError(discoveryResult.reason);
+          setDiscoveryError(new Error(formattedDisc));
+
           // Preserve previously existing discovery payload on failure
+          if (lastSuccessfulDiscoveryRef.current) {
+            setDiscoveryPayload(lastSuccessfulDiscoveryRef.current);
+          }
         }
 
         // Determine unified status
-        if (resolvedHomeErr && !resolvedHome && !homeDataRef.current) {
+        if (resolvedHomeErr && !lastSuccessfulHomeRef.current) {
           setStatus('error');
         } else if (resolvedHome && isHomeDataEmpty(resolvedHome)) {
           setStatus('empty');
@@ -220,11 +289,12 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
         if (!isMountedRef.current || currentRequestId !== requestIdRef.current) {
           return;
         }
-        const err =
-          unhandled instanceof Error ? unhandled : new Error(String(unhandled));
-        setHomeError(err);
-        if (!homeDataRef.current) {
+        const safeErr = new Error(formatUserFacingError(unhandled));
+        setHomeError(safeErr);
+        if (!lastSuccessfulHomeRef.current) {
           setStatus('error');
+        } else {
+          setIsUsingFallback(true);
         }
       } finally {
         if (isRefresh) {
@@ -233,7 +303,6 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
             setIsRefreshing(false);
           }
         } else {
-          isLoadingRef.current = false;
           if (isMountedRef.current && currentRequestId === requestIdRef.current) {
             setIsLoading(false);
           }
@@ -251,11 +320,27 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
     return executeFetch(false);
   }, [executeFetch]);
 
+  // Initial autoLoad
   useEffect(() => {
     if (autoLoad) {
       executeFetch(false);
     }
   }, [autoLoad, executeFetch]);
+
+  // Network recovery on reconnect
+  useEffect(() => {
+    if (!networkStatus) return;
+    const wasOffline = !prevConnectedRef.current;
+    const isNowOnline = networkStatus.isConnected;
+    prevConnectedRef.current = networkStatus.isConnected;
+
+    if (autoRecoverOnReconnect && wasOffline && isNowOnline) {
+      // Reconnected! If an error is active or fallback is currently used, recover automatically
+      if (homeError || isUsingFallback || status === 'error') {
+        void executeFetch(false);
+      }
+    }
+  }, [networkStatus, autoRecoverOnReconnect, homeError, isUsingFallback, status, executeFetch]);
 
   const isEmpty = isHomeDataEmpty(homeData);
   const isSample = Boolean(
@@ -275,7 +360,11 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
     discoveryError,
     isEmpty,
     isSample,
+    isOffline,
+    isUsingFallback,
     lastUpdatedTimestamp: homeData?.lastUpdatedTimestamp,
+    lastSuccessfulSyncTimestamp,
+    lastAttemptedSyncTimestamp,
     refresh,
     reload
   };
