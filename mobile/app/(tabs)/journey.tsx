@@ -37,7 +37,12 @@ export default function JourneyScreen() {
     <ScreenWrapper title="MISSION ROUTE" subtitle="ACTIVE TRANSIT TIMELINE">
       <View style={styles.container}>
         {destination ? (
-          <View style={styles.contextContainer} testID="journey-selected-context-view">
+          <View
+            style={styles.contextContainer}
+            testID="journey-selected-context-view"
+            accessibilityRole="summary"
+            accessibilityLabel={`Selected Destination: ${destination.name}. Arrival Hub: ${destination.hubName}`}
+          >
             <AppCard
               variant="default"
               style={styles.card}
@@ -146,6 +151,7 @@ export default function JourneyScreen() {
                   variant="ghost"
                   size="sm"
                   onPress={handleClearDestination}
+                  accessibilityHint="Clears the current destination selection and returns to the empty journey planner view"
                   testID="journey-clear-destination"
                 />
                 <AppButton
@@ -153,6 +159,7 @@ export default function JourneyScreen() {
                   variant="secondary"
                   size="sm"
                   onPress={handleReturnHome}
+                  accessibilityHint="Returns to the Home discovery and navigation screen"
                   testID="journey-return-home"
                 />
               </View>

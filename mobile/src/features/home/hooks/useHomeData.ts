@@ -28,25 +28,36 @@ export type HomeLoadStatus =
   | 'error';
 
 /**
- * Filters out raw JavaScript stack traces, memory addresses, or file paths
- * to provide human-readable, secure user-facing messages.
+ * Known sensitive string patterns that MUST NEVER leak to user interfaces or screen readers.
+ * Captures tokens, credentials, connection strings, hostnames, IP addresses, stack traces,
+ * filesystem paths, memory addresses, and code error types.
+ */
+const SENSITIVE_ERROR_PATTERN =
+  /(bearer\s+|auth_token=|api_key=|sk_live|password|secret|jwt|private_key|postgres:\/\/|mongodb:\/\/|mysql:\/\/|https?:\/\/|localhost|\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b|TypeError|ReferenceError|SyntaxError|JSON\.parse|at\s+[\w./\\-]+|\.(ts|js|tsx|jsx)\b|\/|\\|0x[0-9a-fA-F]+|<[^>]*>)/i;
+
+/**
+ * Standard safe user-facing error messages for transit telemetry.
+ */
+export const USER_FACING_ERRORS = {
+  DEFAULT: 'An unexpected error occurred while loading transit data.',
+  SERVICE_UNAVAILABLE: 'Transit telemetry service temporarily unavailable. Please retry.'
+} as const;
+
+/**
+ * Filters out raw JavaScript stack traces, memory addresses, credentials, or file paths
+ * to provide human-readable, secure user-facing messages. Preserves clean domain errors.
  */
 export function formatUserFacingError(error: unknown): string {
-  if (!error) return 'An unexpected error occurred while loading transit data.';
+  if (!error) return USER_FACING_ERRORS.DEFAULT;
   const rawMessage = error instanceof Error ? error.message : String(error);
 
-  if (
-    rawMessage.includes('TypeError') ||
-    rawMessage.includes('ReferenceError') ||
-    rawMessage.includes('SyntaxError') ||
-    rawMessage.includes('JSON.parse') ||
-    rawMessage.includes('at ') ||
-    rawMessage.includes('/') ||
-    rawMessage.includes('\\')
-  ) {
-    return 'Transit telemetry service temporarily unavailable. Please retry.';
+  // If the error message contains stack traces, file paths, tokens, URLs, or code artifacts,
+  // sanitize it immediately into a generic service message.
+  if (SENSITIVE_ERROR_PATTERN.test(rawMessage)) {
+    return USER_FACING_ERRORS.SERVICE_UNAVAILABLE;
   }
 
+  // Preserve clean human-readable domain error messages
   return rawMessage;
 }
 

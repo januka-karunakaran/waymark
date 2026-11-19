@@ -12,12 +12,35 @@ import {
   ResolvedQuickAction
 } from './types';
 import { isValidHomeNavigationTarget } from './navigationTargets';
+import {
+  MAX_PARAM_STRING_LENGTH,
+  UNSAFE_PARAM_PATTERN
+} from './journeyParams';
 
 export const UNCONFIGURED_LOCATIONS_MESSAGE =
   'Home and Work locations have not been saved yet. Custom locations will be available in profile settings.';
 
 export const UNKNOWN_SHORTCUT_MESSAGE = 'Destination shortcut not recognized.';
 export const INVALID_DESTINATION_MESSAGE = 'Invalid quick destination.';
+
+/**
+ * Validates saved custom location strings to guard against injection or oversized inputs.
+ */
+function isValidSavedAddress(address: unknown): address is string {
+  if (typeof address !== 'string' || !address.trim()) return false;
+  const trimmed = address.trim();
+  if (trimmed.length > MAX_PARAM_STRING_LENGTH) return false;
+  if (UNSAFE_PARAM_PATTERN.test(trimmed)) return false;
+  if (
+    trimmed.includes('..') ||
+    trimmed.includes('\0') ||
+    trimmed.includes('/') ||
+    trimmed.includes('\\')
+  ) {
+    return false;
+  }
+  return true;
+}
 
 /**
  * Creates a decoupled intent representation from a UI node.
@@ -57,7 +80,7 @@ export function resolveHomeQuickAction(
   switch (id) {
     case 'place-home': {
       const savedHome = options?.savedAddresses?.['place-home'] || options?.savedAddresses?.home;
-      if (savedHome && savedHome.trim()) {
+      if (isValidSavedAddress(savedHome)) {
         const target = '/(tabs)/journey';
         return {
           actionId: 'place-home',
@@ -83,7 +106,7 @@ export function resolveHomeQuickAction(
 
     case 'place-work': {
       const savedWork = options?.savedAddresses?.['place-work'] || options?.savedAddresses?.work;
-      if (savedWork && savedWork.trim()) {
+      if (isValidSavedAddress(savedWork)) {
         const target = '/(tabs)/journey';
         return {
           actionId: 'place-work',
