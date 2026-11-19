@@ -200,6 +200,9 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
   const lastSuccessfulHomeRef = useRef<HomeScreenData | null>(initialHomeData);
   const lastSuccessfulDiscoveryRef = useRef<DiscoveryPayload | null>(initialDiscoveryPayload);
   const prevConnectedRef = useRef<boolean>(networkStatus?.isConnected ?? true);
+  const homeErrorRef = useRef<Error | null>(null);
+  const isUsingFallbackRef = useRef<boolean>(false);
+  const statusRef = useRef<HomeLoadStatus>(initialHomeData ? 'idle' : 'loading');
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -244,6 +247,8 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
           resolvedHome = isValidHomeScreenData(raw) ? raw : sanitizeHomeScreenData(raw);
           homeDataRef.current = resolvedHome;
           lastSuccessfulHomeRef.current = resolvedHome;
+          homeErrorRef.current = null;
+          isUsingFallbackRef.current = false;
           setHomeData(resolvedHome);
           setHomeError(null);
           setIsUsingFallback(false);
@@ -251,13 +256,16 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
         } else {
           const formatted = formatUserFacingError(homeResult.reason);
           resolvedHomeErr = new Error(formatted);
+          homeErrorRef.current = resolvedHomeErr;
           setHomeError(resolvedHomeErr);
 
           // Defensive fallback preservation: keep previous data if present
           if (lastSuccessfulHomeRef.current) {
+            isUsingFallbackRef.current = true;
             setHomeData(lastSuccessfulHomeRef.current);
             setIsUsingFallback(true);
           } else {
+            isUsingFallbackRef.current = false;
             setHomeData(null);
           }
         }
@@ -278,34 +286,37 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
         }
 
         // Determine unified status
+        let newStatus: HomeLoadStatus = 'success';
         if (resolvedHomeErr && !lastSuccessfulHomeRef.current) {
-          setStatus('error');
+          newStatus = 'error';
         } else if (resolvedHome && isHomeDataEmpty(resolvedHome)) {
-          setStatus('empty');
-        } else {
-          setStatus('success');
+          newStatus = 'empty';
         }
+        statusRef.current = newStatus;
+        setStatus(newStatus);
       } catch (unhandled) {
         if (!isMountedRef.current || currentRequestId !== requestIdRef.current) {
           return;
         }
         const safeErr = new Error(formatUserFacingError(unhandled));
+        homeErrorRef.current = safeErr;
         setHomeError(safeErr);
         if (!lastSuccessfulHomeRef.current) {
+          statusRef.current = 'error';
           setStatus('error');
         } else {
+          isUsingFallbackRef.current = true;
           setIsUsingFallback(true);
         }
       } finally {
         if (isRefresh) {
           isRefreshingRef.current = false;
-          if (isMountedRef.current && currentRequestId === requestIdRef.current) {
-            setIsRefreshing(false);
-          }
-        } else {
-          if (isMountedRef.current && currentRequestId === requestIdRef.current) {
-            setIsLoading(false);
-          }
+        }
+
+        if (isMountedRef.current && currentRequestId === requestIdRef.current) {
+          setIsRefreshing(false);
+          setIsLoading(false);
+          isRefreshingRef.current = false;
         }
       }
     },
@@ -336,11 +347,11 @@ export function useHomeData(options: UseHomeDataOptions = {}): UseHomeDataReturn
 
     if (autoRecoverOnReconnect && wasOffline && isNowOnline) {
       // Reconnected! If an error is active or fallback is currently used, recover automatically
-      if (homeError || isUsingFallback || status === 'error') {
+      if (homeErrorRef.current || isUsingFallbackRef.current || statusRef.current === 'error') {
         void executeFetch(false);
       }
     }
-  }, [networkStatus, autoRecoverOnReconnect, homeError, isUsingFallback, status, executeFetch]);
+  }, [networkStatus, autoRecoverOnReconnect, executeFetch]);
 
   const isEmpty = isHomeDataEmpty(homeData);
   const isSample = Boolean(

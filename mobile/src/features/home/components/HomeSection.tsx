@@ -60,7 +60,7 @@ export interface HomeSectionProps {
  * HomeSection — Reusable, accessible section wrapper for Waymark Home screen.
  * Provides consistent heading hierarchy, category eyebrows, and responsive spacing.
  */
-export const HomeSection: React.FC<HomeSectionProps> = ({
+const HomeSectionBase: React.FC<HomeSectionProps> = ({
   title,
   eyebrow,
   actionLabel,
@@ -140,6 +140,8 @@ export const HomeSection: React.FC<HomeSectionProps> = ({
     </View>
   );
 };
+
+export const HomeSection = React.memo(HomeSectionBase);
 
 const styles = StyleSheet.create({
   container: {

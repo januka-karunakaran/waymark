@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter, Href } from 'expo-router';
 import { Info, X } from 'lucide-react-native';
@@ -33,19 +33,40 @@ export default function HomeScreen() {
   const [guidanceMessage, setGuidanceMessage] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const isNavigatingRef = useRef(false);
+  const navTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleSelectSuggestion = (suggestion: HomeSuggestionContent) => {
-    if (suggestion.targetScreen === 'journey') {
-      router.push({
-        pathname: '/(tabs)/journey',
-        params: {
-          destinationId: suggestion.id,
-          destinationName: suggestion.title,
-          source: 'suggested_corridor'
-        }
-      } as unknown as Href);
-    }
-  };
+  useEffect(() => {
+    return () => {
+      if (navTimerRef.current) {
+        clearTimeout(navTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleSelectSuggestion = useCallback(
+    (suggestion: HomeSuggestionContent) => {
+      if (isNavigatingRef.current) return;
+      if (suggestion.targetScreen === 'journey') {
+        isNavigatingRef.current = true;
+        setIsNavigating(true);
+        router.push({
+          pathname: '/(tabs)/journey',
+          params: {
+            destinationId: suggestion.id,
+            destinationName: suggestion.title,
+            source: 'suggested_corridor'
+          }
+        } as unknown as Href);
+
+        if (navTimerRef.current) clearTimeout(navTimerRef.current);
+        navTimerRef.current = setTimeout(() => {
+          isNavigatingRef.current = false;
+          setIsNavigating(false);
+        }, 500);
+      }
+    },
+    [router]
+  );
 
   const handleSelectPlace = useCallback(
     (place: HomeQuickPlaceNode) => {
@@ -72,7 +93,8 @@ export default function HomeScreen() {
           router.push(resolved.targetRoute as Href);
         }
 
-        setTimeout(() => {
+        if (navTimerRef.current) clearTimeout(navTimerRef.current);
+        navTimerRef.current = setTimeout(() => {
           isNavigatingRef.current = false;
           setIsNavigating(false);
         }, 500);
@@ -109,26 +131,32 @@ export default function HomeScreen() {
     [router]
   );
 
-  const handleSelectDiscoveryItem = (item: DiscoveryItem) => {
-    if (item.actionDestination) {
-      router.push(item.actionDestination as Href);
-    }
-  };
+  const handleSelectDiscoveryItem = useCallback(
+    (item: DiscoveryItem) => {
+      if (item.actionDestination) {
+        router.push(item.actionDestination as Href);
+      }
+    },
+    [router]
+  );
 
-  const handleSelectDiscoveryCategory = (category: DiscoveryCategory) => {
-    switch (category) {
-      case 'corridors':
-      case 'modes':
-        router.push('/(tabs)/journey');
-        break;
-      case 'hubs':
-        router.push('/(tabs)/map');
-        break;
-      case 'experiences':
-        router.push('/(tabs)/comfort');
-        break;
-    }
-  };
+  const handleSelectDiscoveryCategory = useCallback(
+    (category: DiscoveryCategory) => {
+      switch (category) {
+        case 'corridors':
+        case 'modes':
+          router.push('/(tabs)/journey');
+          break;
+        case 'hubs':
+          router.push('/(tabs)/map');
+          break;
+        case 'experiences':
+          router.push('/(tabs)/comfort');
+          break;
+      }
+    },
+    [router]
+  );
 
   const handleRefresh = useCallback(async () => {
     await refresh();
