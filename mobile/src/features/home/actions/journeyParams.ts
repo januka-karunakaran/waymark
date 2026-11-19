@@ -12,9 +12,9 @@ import { TransitMode } from '../../../types/transit';
 export const MAX_PARAM_STRING_LENGTH = 128;
 
 /**
- * Known forbidden URL scheme patterns and script markers.
+ * Known forbidden URL scheme patterns, script markers, null bytes, and traversal tokens.
  */
-const UNSAFE_PARAM_PATTERN = /(https?|javascript|data|file|blob):|<[^>]*>/i;
+export const UNSAFE_PARAM_PATTERN = /(https?|javascript|data|file|blob|vbscript|about):|<[^>]*>|%00|\0|&#|\.\.[/\\]/i;
 
 /**
  * Validated destination context presented on the Journey screen.
@@ -121,7 +121,10 @@ export function validateJourneyParams(params: unknown): ValidatedJourneyDestinat
       if (
         trimmedName.length <= MAX_PARAM_STRING_LENGTH &&
         !UNSAFE_PARAM_PATTERN.test(trimmedName) &&
-        !trimmedName.includes('\0')
+        !trimmedName.includes('\0') &&
+        !trimmedName.includes('..') &&
+        !trimmedName.includes('/') &&
+        !trimmedName.includes('\\')
       ) {
         return {
           id: trimmedId,

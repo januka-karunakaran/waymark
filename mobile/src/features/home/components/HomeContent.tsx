@@ -298,6 +298,8 @@ const HomeContentBase: React.FC<HomeContentProps> = ({
           styles.stateWrapper,
           { backgroundColor: activeTheme.colors.abyssVoid }
         ]}
+        accessibilityRole="summary"
+        accessibilityLiveRegion="polite"
         testID={`${testID}-loading`}
       >
         <LoadingIndicator
@@ -317,6 +319,8 @@ const HomeContentBase: React.FC<HomeContentProps> = ({
           styles.stateWrapper,
           { backgroundColor: activeTheme.colors.abyssVoid }
         ]}
+        accessibilityRole="alert"
+        accessibilityLiveRegion="assertive"
         testID={`${testID}-error`}
       >
         <ErrorState
@@ -341,6 +345,8 @@ const HomeContentBase: React.FC<HomeContentProps> = ({
           styles.stateWrapper,
           { backgroundColor: activeTheme.colors.abyssVoid }
         ]}
+        accessibilityRole="summary"
+        accessibilityLiveRegion="polite"
         testID={`${testID}-empty`}
       >
         <EmptyState
@@ -400,6 +406,8 @@ const HomeContentBase: React.FC<HomeContentProps> = ({
             style={styles.suggestionCard}
             testID="home-suggestion-card"
             themeMode={themeMode}
+            accessibilityRole="summary"
+            accessibilityLabel={`Suggested corridor: ${activeContent.suggestion!.title}. ${activeContent.suggestion!.description}`}
           >
             <View style={styles.cardHeader}>
               <View style={styles.cardKickerGroup}>
@@ -465,6 +473,7 @@ const HomeContentBase: React.FC<HomeContentProps> = ({
                   onPress={() =>
                     onSelectSuggestion?.(activeContent.suggestion!)
                   }
+                  accessibilityHint="Navigates to Journey planner with suggested route destination context"
                   testID="home-suggestion-action"
                 />
               </View>
@@ -592,6 +601,8 @@ const HomeContentBase: React.FC<HomeContentProps> = ({
             style={styles.panel}
             testID="home-architecture-card"
             themeMode={themeMode}
+            accessibilityRole="summary"
+            accessibilityLabel={`System Diagnostics: ${activeContent.architectureStatus!.title}, Status: ${activeContent.architectureStatus!.statusLabel}`}
           >
             <View style={styles.panelTitleRow}>
               <AppText
@@ -654,6 +665,7 @@ const HomeContentBase: React.FC<HomeContentProps> = ({
           style={styles.accessibilityRow}
           testID="home-accessibility-banner"
           accessibilityRole="summary"
+          accessibilityLabel={`Accessibility Notice: ${activeContent.accessibilityNotice.message}`}
         >
           <ShieldCheck size={18} color={activeTheme.colors.trainTeal} />
           <View style={styles.accessibilityTextGroup}>
