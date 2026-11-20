@@ -198,6 +198,26 @@ export default function SignInScreen() {
           />
 
           <AppButton
+            title="Forgot Password?"
+            variant="secondary"
+            size="md"
+            onPress={() => router.push('/(auth)/forgot-password')}
+            disabled={isAuthenticating}
+            accessibilityHint="Navigates to the password recovery screen"
+            testID="btn-navigate-forgot-password"
+          />
+
+          <AppButton
+            title="Create a Waymark ID"
+            variant="secondary"
+            size="lg"
+            onPress={() => router.push('/(auth)/sign-up')}
+            disabled={isAuthenticating}
+            accessibilityHint="Navigates to the account registration screen"
+            testID="btn-navigate-sign-up"
+          />
+
+          <AppButton
             title="Continue as Guest"
             variant="secondary"
             size="lg"

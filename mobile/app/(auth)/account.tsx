@@ -119,6 +119,14 @@ export default function AccountScreen() {
           testID="btn-navigate-sign-in"
         />
         <AppButton
+          title="Create a Waymark ID"
+          variant="secondary"
+          size="lg"
+          onPress={() => router.push('/(auth)/sign-up')}
+          accessibilityHint="Navigates to the account registration interface"
+          testID="btn-navigate-sign-up"
+        />
+        <AppButton
           title="Continue as Guest"
           variant="secondary"
           size="lg"
