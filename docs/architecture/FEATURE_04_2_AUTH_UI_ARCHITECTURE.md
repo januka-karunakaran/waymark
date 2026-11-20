@@ -125,7 +125,38 @@ Implemented in `mobile/app/(auth)/sign-in.tsx`:
 
 ---
 
-## 7. Expo SDK 52 Compatibility & Conventions
+## 7. Registration & Account Recovery Architecture (Task 04.2.3)
+
+Implemented in `mobile/app/(auth)/sign-up.tsx` and `mobile/app/(auth)/forgot-password.tsx`:
+
+### Sign-Up Form Specifications & Validation
+- **Display Name Validation:**
+  - Optional field allowing travelers to define their public navigator handle.
+  - Length boundary: clamped to maximum 50 characters.
+  - Trimmed upon submission; omitted from payload if whitespace-only.
+- **Email Validation:**
+  - Mandatory, validated against standard RFC syntax `^[^\s@]+@[^\s@]+\.[^\s@]+$`.
+  - Max length: 254 characters.
+- **Password & Confirmation Validation:**
+  - Mandatory password with minimum 8 characters and maximum 128 characters.
+  - Confirmation password must match password exactly (`Passwords do not match.`).
+  - Inputs mask characters by default with accessible visibility toggles (`AppPasswordInput`).
+- **Registration Dispatch & Truthful Degradation:**
+  - When `serviceReadiness === 'not_configured'`, submission is strictly disabled and an `AuthStatusNotice` (`variant="unavailable"`) informs travelers that registration services are in standby.
+  - When configured, delegates directly to `useAuth().signUp(...)` and transitions to `/(tabs)` upon success.
+
+### Account Recovery (Forgot Password) Specifications
+- **Client Input & Format Verification:**
+  - Collects account email address with standard email syntax and length validation.
+- **Standby Mode & Truthful Presentation:**
+  - When unconfigured, submission is disabled with an `AuthStatusNotice` (`variant="unavailable"`) explaining that recovery services are in standby.
+  - No synthetic recovery tokens or fake emails are dispatched.
+- **Account Enumeration Protection:**
+  - When active, recovery submissions render an enumeration-resistant confirmation notice (`"If an account exists for this email address, password recovery instructions have been sent."`) without revealing whether the email is registered in the database.
+
+---
+
+## 8. Expo SDK 52 Compatibility & Conventions
 
 - **Expo Router 4:** File-based routing using typed routes (`Href`).
 - **No Experimental SDK 53 APIs:** Does not use `Stack.Protected` or other unsupported constructs.
@@ -139,11 +170,11 @@ Implemented in `mobile/app/(auth)/sign-in.tsx`:
 
 ---
 
-## 8. Feature 04.2 Implementation Roadmap
+## 9. Feature 04.2 Implementation Roadmap
 
 | Subtask | Scope | Commit Message | PR Target | Status |
 |---|---|---|---|---|
 | **04.2.1** | Auth Navigation & Shared Layout | `feat(mobile): establish auth screen navigation and layout` | `main` | **Merged (PR #45)** |
-| **04.2.2** | Sign-In Screen & Validation | `feat(mobile): implement secure sign-in screen and validation` | `main` | **Complete / In Review** |
-| **04.2.3** | Sign-Up & Password Recovery UI | `feat(mobile): add registration and account recovery screens` | `main` | Next Task |
-| **04.2.4** | Accessibility, Security & QA | `test(mobile): complete authentication UI integration QA` | `main` | Planned |
+| **04.2.2** | Sign-In Screen & Validation | `feat(mobile): implement secure sign-in screen and validation` | `main` | **Merged (PR #46)** |
+| **04.2.3** | Sign-Up & Password Recovery UI | `feat(mobile): add registration and account recovery screens` | `main` | **Complete / In Review** |
+| **04.2.4** | Accessibility, Security & QA | `test(mobile): complete authentication UI integration QA` | `main` | Next Task |
