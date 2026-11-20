@@ -1,4 +1,4 @@
-﻿# Waymark Mobile â€” Feature 04: Authentication & User Accounts Architecture
+# Waymark Mobile â€” Feature 04: Authentication & User Accounts Architecture
 
 **Document Version:** 1.0.0
 **Status:** Approved Architecture Specification
@@ -184,9 +184,22 @@ flowchart TD
 ## 7. Storage Responsibilities
 
 Implemented in Task 04.1.2:
-- **Native (iOS / Android):** Uses `expo-secure-store` to persist session tokens (`accessToken`, `refreshToken`, expiration metadata) in hardware-backed secure storage (iOS Keychain, Android KeyStore).
-- **Web Platform:** Browser `localStorage` and `sessionStorage` are vulnerable to Cross-Site Scripting (XSS). In compliance with the security policy, web tokens will be retained **in-memory only**. Web persistence requires future backend-driven `HttpOnly; Secure; SameSite=Strict` cookies.
-- **Payload Schema:** Versioned schema (`auth_session_v1`) with JSON schema validation to reject corrupted or obsolete records safely.
+- **Storage Contract (`AuthSessionStorage`):** Defines `getSession()`, `saveSession(session)`, and `clearSession()`, abstracting platform persistence implementations from the auth lifecycle.
+- **Native Security (`NativeAuthSessionStorage`):**
+  - Uses `expo-secure-store` to persist session tokens (`accessToken`, `refreshToken`, expiration metadata) in hardware-backed secure storage (iOS Keychain, Android KeyStore).
+  - Versioned storage key: `waymark_auth_session_v1`.
+  - Automatic purging of corrupted JSON, obsolete schema versions, or expired session payloads.
+  - Fail-safe exception handling ensuring hardware keystore read/write rejections never crash the host application.
+- **Web Storage Policy (`WebAuthSessionStorage`):**
+  - Browser `localStorage` and `sessionStorage` are accessible to client-side scripts and vulnerable to Cross-Site Scripting (XSS).
+  - In strict compliance with the Waymark authentication safety policy, web tokens are stored **in-memory only**.
+  - No access tokens or refresh tokens are ever persisted into browser `localStorage`, `sessionStorage`, or client-readable cookies.
+  - Future web session persistence requires backend-driven `HttpOnly; Secure; SameSite=Strict` cookies.
+- **Payload Schema Validation (`validateSessionPayload`):**
+  - Enforces schema version `CURRENT_SESSION_SCHEMA_VERSION = 1`.
+  - Validates `accessToken`, numeric `expiresAt` (must be in the future), and required `user` fields (`id`, `email`, `displayName`).
+  - Active runtime guard: explicitly throws if any password field is detected in the session payload.
+- **Platform Factory (`createAuthSessionStorage`):** Selects `NativeAuthSessionStorage` for `ios` and `android`, and `WebAuthSessionStorage` for `web`.
 
 ---
 
