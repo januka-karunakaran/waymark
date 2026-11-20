@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter, Href } from 'expo-router';
-import { Info, X } from 'lucide-react-native';
+import { Info, User, X } from 'lucide-react-native';
 import { ScreenWrapper } from '../../src/components/ScreenWrapper';
+import { HeaderAction } from '../../src/components/navigation';
 import { NetworkStatusBanner } from '../../src/components/NetworkStatusBanner';
 import { AppText } from '../../src/components/typography';
 import { theme } from '../../src/theme';
@@ -163,7 +164,16 @@ export default function HomeScreen() {
   }, [refresh]);
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper
+      headerActions={
+        <HeaderAction
+          icon={<User size={18} color={theme.colors.beaconGold} />}
+          label="Account Access"
+          testID="home-header-account-action"
+          onPress={() => router.push('/(auth)/account')}
+        />
+      }
+    >
       <NetworkStatusBanner />
       {Boolean(guidanceMessage) && (
         <View
