@@ -176,5 +176,5 @@ Implemented in `mobile/app/(auth)/sign-up.tsx` and `mobile/app/(auth)/forgot-pas
 |---|---|---|---|---|
 | **04.2.1** | Auth Navigation & Shared Layout | `feat(mobile): establish auth screen navigation and layout` | `main` | **Merged (PR #45)** |
 | **04.2.2** | Sign-In Screen & Validation | `feat(mobile): implement secure sign-in screen and validation` | `main` | **Merged (PR #46)** |
-| **04.2.3** | Sign-Up & Password Recovery UI | `feat(mobile): add registration and account recovery screens` | `main` | **Complete / In Review** |
-| **04.2.4** | Accessibility, Security & QA | `test(mobile): complete authentication UI integration QA` | `main` | Next Task |
+| **04.2.3** | Sign-Up & Password Recovery UI | `feat(mobile): add registration and account recovery screens` | `main` | **Merged (PR #47)** |
+| **04.2.4** | Accessibility, Security & QA | `test(mobile): complete authentication UI integration QA` | `main` | **Complete / In Review** |
