@@ -111,8 +111,16 @@ export default function AccountScreen() {
       {/* Primary Actions */}
       <View style={styles.actionContainer}>
         <AppButton
-          title="Continue as Guest"
+          title="Sign In with Waymark ID"
           variant="primary"
+          size="lg"
+          onPress={() => router.push('/(auth)/sign-in')}
+          accessibilityHint="Navigates to the account sign-in interface"
+          testID="btn-navigate-sign-in"
+        />
+        <AppButton
+          title="Continue as Guest"
+          variant="secondary"
           size="lg"
           onPress={handleReturnHome}
           accessibilityHint="Returns to the Planetary Transit Network dashboard"

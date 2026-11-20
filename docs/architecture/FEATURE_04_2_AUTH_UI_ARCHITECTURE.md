@@ -1,4 +1,4 @@
-﻿# Waymark Mobile â€” Feature 04.2: Authentication UI Architecture & Specifications
+# Waymark Mobile â€” Feature 04.2: Authentication UI Architecture & Specifications
 
 **Document Version:** 1.0.0
 **Status:** Approved Architecture Specification
@@ -99,25 +99,51 @@ The application currently relies on `UnavailableAuthService`:
 
 ---
 
-## 6. Expo SDK 52 Compatibility & Conventions
+## 6. Sign-In Screen Architecture & Validation (Task 04.2.2)
+
+Implemented in `mobile/app/(auth)/sign-in.tsx`:
+
+### Form Validation Rules
+- **Email Validation:**
+  - Mandatory: empty or whitespace-only inputs are rejected with `"Email address is required."`.
+  - Format: checked against RFC-compliant standard regex `^[^\s@]+@[^\s@]+\.[^\s@]+$`.
+  - Length Boundary: clamped to a maximum of 254 characters (RFC 5321).
+  - Sanitization: surrounding whitespace is trimmed before validation and dispatch.
+- **Password Validation:**
+  - Mandatory: empty inputs are rejected with `"Password is required."`.
+  - Length Boundary: clamped to a maximum of 128 characters.
+  - Policy Delegation: complex password strength requirements are not arbitrarily imposed on sign-in (credential verification belongs to the trusted provider).
+- **Concurrency & Re-entrancy Protection:**
+  - Submissions are locked during `status === 'authenticating'` or local `isSubmitting`.
+  - Duplicate button presses are ignored while requests are in-flight.
+
+### Security & Privacy Safeguards
+1. **Password Masking:** Defaults to `secureTextEntry={true}` using `AppPasswordInput`. Show/Hide toggle exposes explicit accessible descriptions (`"Show password"` / `"Hide password"`).
+2. **Zero Storage Persistence:** Passwords exist solely in ephemeral React state during component lifecycle and are completely excluded from persistent storage, route parameters, and analytics.
+3. **Telemetry Scrubbing:** Spies on `console.log`, `info`, `warn`, and `error` confirm that passwords and tokens are never leaked into console logging.
+4. **Honest Standby Mode:** When `serviceReadiness === 'not_configured'`, sign-in submissions are disabled and an `AuthStatusNotice` banner truthfully explains that identity servers are in standby.
+
+---
+
+## 7. Expo SDK 52 Compatibility & Conventions
 
 - **Expo Router 4:** File-based routing using typed routes (`Href`).
 - **No Experimental SDK 53 APIs:** Does not use `Stack.Protected` or other unsupported constructs.
 - **Theme Tokens:** Reuses Waymark 2100 dark theme tokens:
   - Background: `abyssVoid` (`#070A0F`)
-  - Card Surface: `deckInk` (`#0C1017`)
-  - Border: `surfaceBorder` (`#1F2937`)
+  - Card Surface: `deckInk` (`#0D1117`)
+  - Border: `border` (`rgba(184, 194, 217, 0.16)`)
   - Accent Gold: `beaconGold` (`#FFC629`)
-  - Text: `textPrimary` (`#DFE2EB`), `textSecondary` (`#94A3B8`)
+  - Text: `textPrimary` (`#DFE2EB`), `textSecondary` (`#A9B2C3`), `textMuted` (`#7E8CA7`)
 - **Accessibility:** Touch targets $\ge 44 \times 44\text{ pt}$, `accessibilityRole="button"` / `"header"` / `"alert"`, dynamic font scaling enabled (`allowFontScaling={true}`).
 
 ---
 
-## 7. Feature 04.2 Implementation Roadmap
+## 8. Feature 04.2 Implementation Roadmap
 
 | Subtask | Scope | Commit Message | PR Target | Status |
 |---|---|---|---|---|
-| **04.2.1** | Auth Navigation & Shared Layout | `feat(mobile): establish auth screen navigation and layout` | `main` | **Complete / In Review** |
-| **04.2.2** | Sign-In Screen & Validation | `feat(mobile): implement secure sign-in screen and validation` | `main` | Next Task |
-| **04.2.3** | Sign-Up & Password Recovery UI | `feat(mobile): add registration and account recovery screens` | `main` | Planned |
+| **04.2.1** | Auth Navigation & Shared Layout | `feat(mobile): establish auth screen navigation and layout` | `main` | **Merged (PR #45)** |
+| **04.2.2** | Sign-In Screen & Validation | `feat(mobile): implement secure sign-in screen and validation` | `main` | **Complete / In Review** |
+| **04.2.3** | Sign-Up & Password Recovery UI | `feat(mobile): add registration and account recovery screens` | `main` | Next Task |
 | **04.2.4** | Accessibility, Security & QA | `test(mobile): complete authentication UI integration QA` | `main` | Planned |

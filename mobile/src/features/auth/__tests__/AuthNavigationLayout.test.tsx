@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 
 const mockPush = jest.fn();
@@ -162,8 +162,8 @@ describe('Feature 04.2.1 â€” Auth Navigation & Shared UI Layout', () => {
     expect(titleText.props.accessibilityRole).toBe('header');
   });
 
-  // 8. Missing-route prevention (no broken active links)
-  it('TC-04.2.1-08: does not expose unfinished routes as active links and shows coming soon badge', () => {
+  // 8. Sign-In navigation link to real route
+  it('TC-04.2.1-08: navigates to /(auth)/sign-in when Sign In button is pressed', () => {
     renderWithAuth(<AccountScreen />);
 
     expect(screen.getByTestId('account-coming-soon-badge')).toBeTruthy();
@@ -171,8 +171,12 @@ describe('Feature 04.2.1 â€” Auth Navigation & Shared UI Layout', () => {
       screen.getByText(/Sign-In & Registration rolling out in System Update 04.2.2 \/ 04.2.3/i)
     ).toBeTruthy();
 
-    // Verify there is no active sign-in button or broken link yet
-    expect(screen.queryByTestId('btn-sign-in')).toBeNull();
+    const signInBtn = screen.getByTestId('btn-navigate-sign-in');
+    expect(signInBtn).toBeTruthy();
+    fireEvent.press(signInBtn);
+    expect(mockPush).toHaveBeenCalledWith('/(auth)/sign-in');
+
+    // Confirm unfinished sign-up route is not exposed yet
     expect(screen.queryByTestId('btn-sign-up')).toBeNull();
   });
 
