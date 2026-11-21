@@ -22,7 +22,7 @@ const MAX_EMAIL_LENGTH = 254;
  */
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const { serviceReadiness } = useAuth();
+  const { serviceReadiness, resetPassword } = useAuth();
 
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -67,9 +67,14 @@ export default function ForgotPasswordScreen() {
 
     setIsSubmitting(true);
     try {
-      // Standby guard: In production, external recovery adapter would be invoked.
-      // Generic success notice is set without account enumeration.
-      setIsSubmitted(true);
+      const result = await resetPassword(email);
+      if (result.success) {
+        setIsSubmitted(true);
+      } else {
+        setEmailError(result.error?.message ?? 'Failed to request account recovery.');
+      }
+    } catch {
+      setEmailError('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
