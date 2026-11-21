@@ -9,6 +9,7 @@ import {
   SignInCredentials,
   SignUpDetails
 } from '../types';
+import { logger } from '../../../utils/logger';
 
 /**
  * Safely maps a Supabase User object into the Waymark domain AuthUser model.
@@ -120,6 +121,9 @@ export function mapSupabaseError(error: unknown): AuthError {
     if (/user already registered/i.test(rawMessage)) {
       // Avoid account enumeration on sign-up; provide generic safe outcome
       return new AuthError('UNKNOWN', 'Unable to complete registration. Please check your information or sign in.');
+    }
+    if (/unauthorized/i.test(rawMessage)) {
+      return new AuthError('UNAUTHORIZED', 'Authentication required to complete this action.');
     }
   }
 
@@ -340,9 +344,203 @@ export class SupabaseAuthService implements AuthService {
     }
 
     try {
-      await this.client.auth.signOut();
-    } catch {
-      // Sign-out is idempotent: remote notification errors do not block local cleanup
+      const { error } = await this.client.auth.signOut();
+      if (error) {
+        logger.warn('SupabaseAuthService: Remote sign-out error', error);
+        throw mapSupabaseError(error);
+      }
+    } catch (err) {
+      // Rethrow mapped error for transparency, while callers ensure local cleanup occurs
+      throw mapSupabaseError(err);
+    }
+  }
+
+  /**
+   * Dispatches genuine password recovery via Supabase Auth.
+   * Directs redirect callback to waymark://auth/callback.
+   */
+  async resetPassword(email: string): Promise<AuthResult> {
+    if (!this.client) {
+      return {
+        success: false,
+        error: AuthError.notConfigured()
+      };
+    }
+
+    const client = this.client;
+    const trimmedEmail = email?.trim();
+    if (!trimmedEmail) {
+      return {
+        success: false,
+        error: AuthError.invalidCredentials('Email address is required.')
+      };
+    }
+
+    const flightKey = `reset:${trimmedEmail.toLowerCase()}`;
+    const inFlight = this.inFlightRequests.get(flightKey);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const dispatch = (async (): Promise<AuthResult> => {
+      try {
+        const { error } = await client.auth.resetPasswordForEmail(trimmedEmail, {
+          redirectTo: 'waymark://auth/callback'
+        });
+
+        if (error) {
+          return {
+            success: false,
+            error: mapSupabaseError(error)
+          };
+        }
+
+        return {
+          success: true
+        };
+      } catch (err) {
+        return {
+          success: false,
+          error: mapSupabaseError(err)
+        };
+      }
+    })();
+
+    this.inFlightRequests.set(flightKey, dispatch);
+    try {
+      return await dispatch;
+    } finally {
+      this.inFlightRequests.delete(flightKey);
+    }
+  }
+
+  /**
+   * Explicitly revalidates and refreshes the current session with the provider.
+   */
+  async refreshSession(): Promise<AuthResult> {
+    if (!this.client) {
+      return {
+        success: false,
+        error: AuthError.notConfigured()
+      };
+    }
+
+    const client = this.client;
+    const flightKey = 'session:refresh';
+    const inFlight = this.inFlightRequests.get(flightKey);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const dispatch = (async (): Promise<AuthResult> => {
+      try {
+        const { data, error } = await client.auth.refreshSession();
+        if (error) {
+          return {
+            success: false,
+            error: mapSupabaseError(error)
+          };
+        }
+
+        if (!data || !data.session || !data.user) {
+          return {
+            success: false,
+            error: AuthError.sessionExpired()
+          };
+        }
+
+        const session = mapSupabaseSession(data.session);
+        const user = mapSupabaseUser(data.user);
+
+        return {
+          success: true,
+          session,
+          user
+        };
+      } catch (err) {
+        return {
+          success: false,
+          error: mapSupabaseError(err)
+        };
+      }
+    })();
+
+    this.inFlightRequests.set(flightKey, dispatch);
+    try {
+      return await dispatch;
+    } finally {
+      this.inFlightRequests.delete(flightKey);
+    }
+  }
+
+  /**
+   * Subscribes to provider-level authentication state change events.
+   */
+  onAuthStateChange(callback: (session: AuthSession | null, event?: string) => void): () => void {
+    if (!this.client) {
+      return () => {};
+    }
+
+    const { data: { subscription } } = this.client.auth.onAuthStateChange((event, supabaseSession) => {
+      let mappedSession: AuthSession | null = null;
+      if (supabaseSession) {
+        try {
+          mappedSession = mapSupabaseSession(supabaseSession);
+        } catch {
+          mappedSession = null;
+        }
+      }
+      callback(mappedSession, event);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }
+
+  /**
+   * Updates user password for an authenticated session.
+   */
+  async updatePassword(password: string): Promise<AuthResult> {
+    if (!this.client) {
+      return {
+        success: false,
+        error: AuthError.notConfigured()
+      };
+    }
+
+    if (!password || password.length < 8) {
+      return {
+        success: false,
+        error: AuthError.invalidCredentials('Password must be at least 8 characters long.')
+      };
+    }
+
+    try {
+      const { data, error } = await this.client.auth.updateUser({ password });
+      if (error) {
+        return {
+          success: false,
+          error: mapSupabaseError(error)
+        };
+      }
+
+      if (!data || !data.user) {
+        return {
+          success: false,
+          error: AuthError.unknown('Password update completed but no user record returned.')
+        };
+      }
+
+      return {
+        success: true,
+        user: mapSupabaseUser(data.user)
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: mapSupabaseError(err)
+      };
     }
   }
 }

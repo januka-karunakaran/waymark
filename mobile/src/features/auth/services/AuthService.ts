@@ -16,6 +16,7 @@ import {
  * - Returning only genuine, verified sessions (no fabricated tokens)
  * - Safe handling of credentials (no passwords persisted)
  * - Sanitized domain error reporting
+ * - Single authority of truth for session and lifecycle maintenance
  */
 export interface AuthService {
   /**
@@ -52,4 +53,36 @@ export interface AuthService {
    * Used by UI and Context layers to determine whether auth actions can be dispatched.
    */
   getServiceReadiness(): ServiceReadiness;
+
+  /**
+   * Dispatches an account password recovery request via the identity provider.
+   *
+   * @param email Validated email address
+   * @returns AuthResult indicating whether the reset dispatch was accepted
+   */
+  resetPassword?(email: string): Promise<AuthResult>;
+
+  /**
+   * Explicitly revalidates and refreshes the current session with the provider.
+   *
+   * @returns AuthResult containing the refreshed session or expired error
+   */
+  refreshSession?(): Promise<AuthResult>;
+
+  /**
+   * Attaches an event listener for provider-driven authentication state changes.
+   * (e.g. background token refresh, user sign-out, session revocation).
+   *
+   * @param callback Handler receiving the updated session or null
+   * @returns Unsubscribe function
+   */
+  onAuthStateChange?(callback: (session: AuthSession | null, event?: string) => void): () => void;
+
+  /**
+   * Updates the password for an authenticated or recovery-linked user session.
+   *
+   * @param password New password
+   * @returns AuthResult indicating update outcome
+   */
+  updatePassword?(password: string): Promise<AuthResult>;
 }

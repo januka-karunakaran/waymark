@@ -50,6 +50,31 @@ export class UnavailableAuthService implements AuthService {
   getServiceReadiness(): ServiceReadiness {
     return 'not_configured';
   }
+
+  async resetPassword(_email: string): Promise<AuthResult> {
+    return {
+      success: false,
+      error: AuthError.notConfigured('Authentication provider is not configured. Password recovery is currently unavailable.')
+    };
+  }
+
+  async refreshSession(): Promise<AuthResult> {
+    return {
+      success: false,
+      error: AuthError.notConfigured()
+    };
+  }
+
+  onAuthStateChange(_callback: (session: AuthSession | null, event?: string) => void): () => void {
+    return () => {};
+  }
+
+  async updatePassword(_password: string): Promise<AuthResult> {
+    return {
+      success: false,
+      error: AuthError.notConfigured()
+    };
+  }
 }
 
 export const unavailableAuthService = new UnavailableAuthService();

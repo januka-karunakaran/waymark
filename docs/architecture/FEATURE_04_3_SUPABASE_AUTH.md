@@ -147,8 +147,8 @@ When configuring the Supabase Project Dashboard:
 | Task | Scope | Commit Message | PR Target | Status |
 |---|---|---|---|---|
 | **04.3.1** | Supabase Architecture & Secure Configuration | `feat(mobile): configure real auth provider architecture` | `main` | Merged (PR #49) |
-| **04.3.2** | Real Sign-In & Registration Adapter | `feat(mobile): integrate real sign-in and registration` | `main` | **Current Task** |
-| **04.3.3** | Session Lifecycle, Verification & Recovery | `feat(mobile): implement auth session and recovery lifecycle` | `main` | Planned |
+| **04.3.2** | Real Sign-In & Registration Adapter | `feat(mobile): integrate real sign-in and registration` | `main` | Merged (PR #50) |
+| **04.3.3** | Session Lifecycle, Verification & Recovery | `feat(mobile): implement auth session and recovery lifecycle` | `main` | **Current Task** |
 | **04.3.4** | Real Auth UI Integration & Final QA | `test(mobile): complete real authentication integration QA` | `main` | Planned |
 
 ---
@@ -172,4 +172,34 @@ The `SupabaseAuthService` implements the `AuthService` interface:
 2. **Token Sanitization in Errors:** Error mappers ensure upstream responses with tokens, project identifiers, or auth headers are sanitized into generic domain `AuthError` instances.
 3. **In-Flight Request Deduplication:** Concurrent identical sign-in or sign-up dispatches for the same email are deduplicated to avoid duplicate network dispatches.
 4. **Zero Simulated Success:** Authentication and registration strictly depend on genuine provider outcomes.
+
+---
+
+## 14. Session Lifecycle, Verification & Recovery Architecture (Task 04.3.3)
+
+### 14.1 Session Architecture Reconciliation & Trust Boundary
+- **Single Authority of Truth:** The remote identity provider (`AuthService`) serves as the single source of truth for session validity. Local secure storage acts solely as an encrypted caching mechanism.
+- **Resurrection Prevention:** If the provider reports no active session, local secure storage is immediately purged, ensuring revoked or expired tokens can never resurrect an unauthenticated session.
+- **Event Synchronization:** `AuthProvider` subscribes to provider-level authentication state events (`onAuthStateChange`). It transparently digests `TOKEN_REFRESHED` events from Supabase background rotations without unmounting consumers or dropping user profile context.
+- **Duplicate Listener Defense:** Guaranteed single listener attachment via `useEffect` lifecycle with comprehensive cleanup on unmount.
+
+### 14.2 App Startup & Offline Guarantees
+- **No Session:** Transitions directly to `guest` state.
+- **Valid Session:** Restores authenticated state and updates cache.
+- **Expired Token:** Invokes provider `refreshSession()`. If refresh fails, transitions safely to `guest` and purges stale storage.
+- **Offline Startup:** Network failures during provider revalidation do not fabricate authenticated state; app defaults cleanly to guest mode while preserving unauthenticated transit navigation.
+
+### 14.3 Deep Linking & Email Verification
+- **Application URL Scheme:** `waymark://` configured in `app.json`.
+- **Authorized Callback Path:** `waymark://auth/callback`.
+- **Callback Validation:** `validateCallbackUrl` unconditionally rejects dangerous protocols (`javascript:`, `data:`, `file:`, `blob:`) and directory traversal payloads (`..`, `%2e`).
+- **Supported Exchange Flows:**
+  - PKCE Authorization Code: `client.auth.exchangeCodeForSession(code)`
+  - Implicit Hash Fragment: `client.auth.setSession({ access_token, refresh_token })`
+
+### 14.4 Password Recovery & Enumeration Resistance
+- **Real Provider Dispatch:** `resetPassword(email)` executes `client.auth.resetPasswordForEmail(email, { redirectTo: 'waymark://auth/callback' })`.
+- **No Placeholder Mocking:** Removed all previous standby placeholder success claims; success strictly corresponds to provider-acknowledged dispatch.
+- **Enumeration Resistance:** Generic success notices are presented regardless of account existence, preventing threat actors from probing registered email addresses.
+
 
