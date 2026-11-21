@@ -1,8 +1,7 @@
-import { AuthService, unavailableAuthService } from '../services';
+import { AuthService, unavailableAuthService, SupabaseAuthService } from '../services';
 import { getSupabaseConfig, SupabaseConfig } from './supabaseConfig';
 import { getSupabaseClient } from './supabaseClient';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { AuthError } from '../types';
 
 export interface AuthServiceFactoryOptions {
   config?: SupabaseConfig;
@@ -16,7 +15,7 @@ export interface AuthServiceFactoryOptions {
  *
  * Selection rules:
  * - If Supabase credentials are missing or invalid: returns fallbackService (defaults to UnavailableAuthService)
- * - If Supabase credentials are valid: initializes real Supabase client and provides adapter
+ * - If Supabase credentials are valid: initializes real Supabase client and returns SupabaseAuthService
  *
  * Zero-Deception Policy:
  * The production fallback strictly reports serviceReadiness: 'not_configured' and never
@@ -35,20 +34,5 @@ export function createAuthService(options?: AuthServiceFactoryOptions): AuthServ
     return fallback;
   }
 
-  // Note: Full SupabaseAuthService is delivered in Task 04.3.2.
-  // For Task 04.3.1 architecture validation, when configured with a valid client,
-  // we return an adapter conforming to AuthService with readiness 'ready'.
-  return {
-    getServiceReadiness: () => 'ready',
-    getCurrentSession: async () => null,
-    signIn: async () => ({
-      success: false,
-      error: new AuthError('PROVIDER_UNAVAILABLE', 'Real authentication operations will be enabled in Task 04.3.2.')
-    }),
-    signUp: async () => ({
-      success: false,
-      error: new AuthError('PROVIDER_UNAVAILABLE', 'Real authentication operations will be enabled in Task 04.3.2.')
-    }),
-    signOut: async () => Promise.resolve()
-  };
+  return new SupabaseAuthService(client);
 }

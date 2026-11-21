@@ -146,7 +146,30 @@ When configuring the Supabase Project Dashboard:
 
 | Task | Scope | Commit Message | PR Target | Status |
 |---|---|---|---|---|
-| **04.3.1** | Supabase Architecture & Secure Configuration | `feat(mobile): configure real auth provider architecture` | `main` | **Current Task** |
-| **04.3.2** | Real Sign-In & Registration Adapter | `feat(mobile): integrate real sign-in and registration` | `main` | Next Task |
+| **04.3.1** | Supabase Architecture & Secure Configuration | `feat(mobile): configure real auth provider architecture` | `main` | Merged (PR #49) |
+| **04.3.2** | Real Sign-In & Registration Adapter | `feat(mobile): integrate real sign-in and registration` | `main` | **Current Task** |
 | **04.3.3** | Session Lifecycle, Verification & Recovery | `feat(mobile): implement auth session and recovery lifecycle` | `main` | Planned |
 | **04.3.4** | Real Auth UI Integration & Final QA | `test(mobile): complete real authentication integration QA` | `main` | Planned |
+
+---
+
+## 13. Real Sign-In & Registration Architecture (Task 04.3.2)
+
+### 13.1 Provider Adapter Implementation
+The `SupabaseAuthService` implements the `AuthService` interface:
+- **Sign-In:** Calls `supabase.auth.signInWithPassword({ email, password })`. Validates provider responses, extracts genuine access and refresh tokens, and converts Unix second expiration timestamps to UTC milliseconds.
+- **Sign-Up:** Calls `supabase.auth.signUp({ email, password, options: { data } })`. Accurately distinguishes between registrations that return an immediate session and those requiring out-of-band email verification (`session: null`).
+- **Sign-Out:** Calls `supabase.auth.signOut()` idempotently.
+- **Service Readiness:** Accurately reflects `'ready'` when backed by an initialized client and `'not_configured'` when unconfigured.
+
+### 13.2 Identity & Session Mapping Guarantees
+- **`AuthUser` Mapping:** Provider user IDs (UUID) are preserved directly. Display names are safely extracted from `user_metadata` or derived from the email prefix with sanitization. Verification state is bound to `email_confirmed_at`.
+- **`AuthSession` Mapping:** Validates presence of `access_token` and maps `expires_at` into UTC milliseconds (`expires_at * 1000`).
+- **Enumeration Protection:** If Supabase returns an empty `identities` list on registration (user already exists), the adapter sets `requiresVerification: true` and withholds session creation to prevent account enumeration.
+
+### 13.3 Security & Zero-Deception Controls
+1. **Zero Credential Persistence:** Neither `SupabaseAuthService` nor storage layers retain passwords in memory, properties, or logs.
+2. **Token Sanitization in Errors:** Error mappers ensure upstream responses with tokens, project identifiers, or auth headers are sanitized into generic domain `AuthError` instances.
+3. **In-Flight Request Deduplication:** Concurrent identical sign-in or sign-up dispatches for the same email are deduplicated to avoid duplicate network dispatches.
+4. **Zero Simulated Success:** Authentication and registration strictly depend on genuine provider outcomes.
+
