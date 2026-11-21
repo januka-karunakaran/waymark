@@ -16,7 +16,8 @@ import {
   SignInCredentials,
   SignUpDetails
 } from '../types';
-import { AuthService, unavailableAuthService } from '../services';
+import { AuthService } from '../services';
+import { createAuthService } from '../providers';
 import { AuthSessionStorage, authSessionStorage } from '../storage';
 import { logger } from '../../../utils/logger';
 
@@ -68,7 +69,7 @@ export interface AuthProviderProps {
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({
   children,
-  authService = unavailableAuthService,
+  authService = createAuthService(),
   storage = authSessionStorage,
   autoInitialize = true
 }) => {

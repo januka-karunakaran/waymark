@@ -1,5 +1,18 @@
 import '@testing-library/react-native';
 
+// Polyfill global WebSocket for Node < 22 test environments (e.g. CI Node 20)
+if (typeof global.WebSocket === 'undefined') {
+  global.WebSocket = class MockWebSocket {
+    constructor() {
+      this.readyState = 3;
+    }
+    send() {}
+    close() {}
+    addEventListener() {}
+    removeEventListener() {}
+  };
+}
+
 // Mock NetInfo
 jest.mock('@react-native-community/netinfo', () => {
   const listeners = [];
