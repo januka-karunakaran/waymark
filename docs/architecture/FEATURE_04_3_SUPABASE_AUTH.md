@@ -148,8 +148,8 @@ When configuring the Supabase Project Dashboard:
 |---|---|---|---|---|
 | **04.3.1** | Supabase Architecture & Secure Configuration | `feat(mobile): configure real auth provider architecture` | `main` | Merged (PR #49) |
 | **04.3.2** | Real Sign-In & Registration Adapter | `feat(mobile): integrate real sign-in and registration` | `main` | Merged (PR #50) |
-| **04.3.3** | Session Lifecycle, Verification & Recovery | `feat(mobile): implement auth session and recovery lifecycle` | `main` | **Current Task** |
-| **04.3.4** | Real Auth UI Integration & Final QA | `test(mobile): complete real authentication integration QA` | `main` | Planned |
+| **04.3.3** | Session Lifecycle, Verification & Recovery | `feat(mobile): implement auth session and recovery lifecycle` | `main` | Merged (PR #51) |
+| **04.3.4** | Real Auth UI Integration & Final QA | `test(mobile): complete real authentication integration QA` | `main` | **Current Task** |
 
 ---
 
@@ -201,5 +201,51 @@ The `SupabaseAuthService` implements the `AuthService` interface:
 - **Real Provider Dispatch:** `resetPassword(email)` executes `client.auth.resetPasswordForEmail(email, { redirectTo: 'waymark://auth/callback' })`.
 - **No Placeholder Mocking:** Removed all previous standby placeholder success claims; success strictly corresponds to provider-acknowledged dispatch.
 - **Enumeration Resistance:** Generic success notices are presented regardless of account existence, preventing threat actors from probing registered email addresses.
+
+---
+
+## 15. Real Authentication Integration QA (Task 04.3.4)
+
+### 15.1 Root Application Architecture & Boundaries
+`mobile/app/_layout.tsx` mounts `<AuthProvider>` as the single root authentication boundary:
+- Wrapped directly inside `<SafeAreaProvider>` and `<ErrorBoundary>`.
+- Displays top-level `<NetworkStatusBanner>` for global connectivity alerts.
+- Encapsulates both `(tabs)` and `(auth)` stacks without conflicting session authorities.
+
+### 15.2 Minimal Truthful Authenticated Account Experience
+- When authenticated, `AccountScreen` presents verified user identity details:
+  - Display name and email extracted from provider identity payload.
+  - Verification indicator based on genuine `email_confirmed_at`.
+  - Sign-Out action trigger calling `signOut()`, clearing both in-memory state and secure storage cache.
+  - Preserves full guest accessibility to all 5 core planetary transit tabs.
+  - Avoids promising unimplemented features (e.g. cloud bookmarks or biometric boarding).
+
+### 15.3 24 End-to-End Integration Test Scenarios
+Verified in `mobile/src/features/auth/__tests__/RealAuthIntegrationQA.test.tsx`:
+1. Guest startup without credentials
+2. Unconfigured provider fallback notice
+3. Configured provider readiness reporting
+4. Real-service adapter invocation with injected client
+5. Sign-in UI handoff & credential transmission
+6. Invalid credentials error presentation
+7. Registration form handoff to provider
+8. Out-of-band email verification handling
+9. Valid session restoration on app launch
+10. Expired token handling & storage purge
+11. Session refresh via provider endpoints
+12. Sign-out memory and storage purge
+13. Session revocation state synchronization
+14. Password reset request dispatch
+15. Recovery callback parameter validation
+16. In-flight duplicate request prevention
+17. Sensitive-data redaction in telemetry & errors
+18. Web storage restrictions (strictly memory-based)
+19. Native hardware-backed KeyStore encryption
+20. AuthProvider root hierarchy mount validation
+21. Public Home & Discovery navigation regression
+22. Journey and radar map accessibility regression
+23. Form accessibility labels, hints, and roles
+24. Zero simulated account / token generation guarantee
+
 
 

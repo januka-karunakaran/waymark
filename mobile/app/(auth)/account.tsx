@@ -20,7 +20,7 @@ import { theme } from '../../src/theme';
  */
 export default function AccountScreen() {
   const router = useRouter();
-  const { serviceReadiness, status, user } = useAuth();
+  const { serviceReadiness, user, isAuthenticated, signOut } = useAuth();
 
   const handleReturnHome = () => {
     if (router.canGoBack()) {
@@ -34,6 +34,10 @@ export default function AccountScreen() {
     router.replace('/(tabs)/map');
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   const isConfigured = serviceReadiness !== 'not_configured';
 
   return (
@@ -45,7 +49,7 @@ export default function AccountScreen() {
         title="ACCOUNT ACCESS"
         subtitle="Manage your multimodal transit identity and preferences."
         badgeText="WAYMARK 2100"
-        statusTag={isConfigured ? 'SYS.READY' : 'SYS.GUEST'}
+        statusTag={isAuthenticated ? 'SYS.AUTH' : isConfigured ? 'SYS.READY' : 'SYS.GUEST'}
         testID="account-brand-header"
       />
 
@@ -56,6 +60,13 @@ export default function AccountScreen() {
           title="Authentication Service Standby"
           message="External identity providers are currently not configured. Full planetary transit routing, vector radar mapping, and AI concierge features are completely accessible in Guest mode."
           testID="account-unconfigured-notice"
+        />
+      ) : isAuthenticated && user ? (
+        <AuthStatusNotice
+          variant="info"
+          title="Account Verified"
+          message={`Authenticated session active for ${user.email}. Planetary transit preferences and synchronized route bookmarks enabled.`}
+          testID="account-authenticated-notice"
         />
       ) : (
         <AuthStatusNotice
@@ -75,18 +86,18 @@ export default function AccountScreen() {
           </AppText>
         </View>
         <AppText variant="body" style={styles.cardBody}>
-          {status === 'authenticated' && user
-            ? `Signed in as ${user.displayName || user.email}`
+          {isAuthenticated && user
+            ? `Signed in as ${user.displayName || user.email} (${user.emailVerified ? 'Verified' : 'Pending Verification'})`
             : 'You are currently traveling as an Anonymous Guest Navigator. All planetary transit schedules, vector navigation, and mission corridors are active.'}
         </AppText>
       </AppCard>
 
-      {/* Upcoming Capabilities Information Card */}
+      {/* Capabilities Information Card */}
       <AppCard style={styles.card} testID="account-features-card">
         <View style={styles.cardHeader}>
           <Sparkles size={20} color={theme.colors.beaconGold} accessible={false} />
           <AppText variant="h3" style={styles.cardTitle}>
-            Upcoming Account Capabilities
+            {isAuthenticated ? 'Active Capabilities' : 'Upcoming Account Capabilities'}
           </AppText>
         </View>
         <View style={styles.featureItem}>
@@ -101,47 +112,80 @@ export default function AccountScreen() {
             Frequent corridors & biometric boarding verification
           </AppText>
         </View>
-        <View style={styles.comingSoonBadge} testID="account-coming-soon-badge">
-          <AppText variant="caption" weight="semibold" style={styles.comingSoonText}>
-            Sign-In & Registration rolling out in System Update 04.2.2 / 04.2.3
-          </AppText>
-        </View>
+        {!isAuthenticated && (
+          <View style={styles.comingSoonBadge} testID="account-coming-soon-badge">
+            <AppText variant="caption" weight="semibold" style={styles.comingSoonText}>
+              Sign-In & Registration rolling out in System Update 04.2.2 / 04.2.3
+            </AppText>
+          </View>
+        )}
       </AppCard>
 
       {/* Primary Actions */}
       <View style={styles.actionContainer}>
-        <AppButton
-          title="Sign In with Waymark ID"
-          variant="primary"
-          size="lg"
-          onPress={() => router.push('/(auth)/sign-in')}
-          accessibilityHint="Navigates to the account sign-in interface"
-          testID="btn-navigate-sign-in"
-        />
-        <AppButton
-          title="Create a Waymark ID"
-          variant="secondary"
-          size="lg"
-          onPress={() => router.push('/(auth)/sign-up')}
-          accessibilityHint="Navigates to the account registration interface"
-          testID="btn-navigate-sign-up"
-        />
-        <AppButton
-          title="Continue as Guest"
-          variant="secondary"
-          size="lg"
-          onPress={handleReturnHome}
-          accessibilityHint="Returns to the Planetary Transit Network dashboard"
-          testID="btn-continue-as-guest"
-        />
-        <AppButton
-          title="Open Multimodal Radar Map"
-          variant="secondary"
-          size="lg"
-          onPress={handleGoToMap}
-          accessibilityHint="Navigates to the live vector transit canvas"
-          testID="btn-open-radar-map"
-        />
+        {isAuthenticated ? (
+          <>
+            <AppButton
+              title="Sign Out"
+              variant="secondary"
+              size="lg"
+              onPress={handleSignOut}
+              accessibilityHint="Signs out of your Waymark account and transitions to guest navigation"
+              testID="btn-account-sign-out"
+            />
+            <AppButton
+              title="Return to Planetary Dashboard"
+              variant="primary"
+              size="lg"
+              onPress={handleReturnHome}
+              accessibilityHint="Returns to the planetary transit dashboard"
+              testID="btn-account-return-dashboard"
+            />
+            <AppButton
+              title="Open Multimodal Radar Map"
+              variant="secondary"
+              size="lg"
+              onPress={handleGoToMap}
+              accessibilityHint="Navigates to the live vector transit canvas"
+              testID="btn-open-radar-map"
+            />
+          </>
+        ) : (
+          <>
+            <AppButton
+              title="Sign In with Waymark ID"
+              variant="primary"
+              size="lg"
+              onPress={() => router.push('/(auth)/sign-in')}
+              accessibilityHint="Navigates to the account sign-in interface"
+              testID="btn-navigate-sign-in"
+            />
+            <AppButton
+              title="Create a Waymark ID"
+              variant="secondary"
+              size="lg"
+              onPress={() => router.push('/(auth)/sign-up')}
+              accessibilityHint="Navigates to the account registration interface"
+              testID="btn-navigate-sign-up"
+            />
+            <AppButton
+              title="Continue as Guest"
+              variant="secondary"
+              size="lg"
+              onPress={handleReturnHome}
+              accessibilityHint="Returns to the Planetary Transit Network dashboard"
+              testID="btn-continue-as-guest"
+            />
+            <AppButton
+              title="Open Multimodal Radar Map"
+              variant="secondary"
+              size="lg"
+              onPress={handleGoToMap}
+              accessibilityHint="Navigates to the live vector transit canvas"
+              testID="btn-open-radar-map"
+            />
+          </>
+        )}
       </View>
     </AuthScreenShell>
   );
