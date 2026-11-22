@@ -6,10 +6,13 @@ const SENSITIVE_KEYS = new Set([
   'creditcard',
   'cookie',
   'api_key',
-  'apikey'
+  'apikey',
+  'access_token',
+  'refresh_token',
+  'secretkey'
 ]);
 
-function maskSensitiveData(data: unknown): unknown {
+export function maskSensitiveData(data: unknown): unknown {
   if (typeof data !== 'object' || data === null) {
     return data;
   }
