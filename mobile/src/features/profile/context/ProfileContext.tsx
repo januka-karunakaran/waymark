@@ -11,6 +11,7 @@ import React, {
   useState,
   useCallback,
   useMemo,
+  useRef,
   ReactNode
 } from 'react';
 import { useAuth } from '../../auth';
@@ -54,14 +55,19 @@ const ProfileContext = createContext<ProfileContextValue | null>(null);
 export interface ProfileProviderProps {
   children: ReactNode;
   repository?: ProfileRepository;
+  profileRepo?: ProfileRepository;
 }
 
 export const ProfileProvider: React.FC<ProfileProviderProps> = ({
   children,
-  repository
+  repository,
+  profileRepo: profileRepoProp
 }) => {
   const { user, isAuthenticated } = useAuth();
-  const profileRepo = useMemo(() => repository ?? new SupabaseProfileRepository(), [repository]);
+  const profileRepo = useMemo(
+    () => repository ?? profileRepoProp ?? new SupabaseProfileRepository(),
+    [repository, profileRepoProp]
+  );
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([]);
@@ -73,15 +79,24 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<ProfileError | null>(null);
 
+  const activeUserIdRef = useRef<string | null>(null);
+  const profileSeqRef = useRef<number>(0);
+  const placesSeqRef = useRef<number>(0);
+  const preferencesSeqRef = useRef<number>(0);
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
   const loadProfile = useCallback(
     async (userId: string) => {
+      const seq = ++profileSeqRef.current;
       setIsLoading(true);
       try {
         const result = await profileRepo.getProfile(userId);
+        if (seq !== profileSeqRef.current || activeUserIdRef.current !== userId) {
+          return;
+        }
         if (result.success) {
           if (result.data) {
             setProfile(result.data);
@@ -100,13 +115,18 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({
           setError(result.error);
         }
       } catch (err: unknown) {
+        if (seq !== profileSeqRef.current || activeUserIdRef.current !== userId) {
+          return;
+        }
         logger.error('Unexpected exception while loading profile', err);
         setError({
           code: 'UNKNOWN_ERROR',
           message: err instanceof Error ? err.message : 'Failed to load profile.'
         });
       } finally {
-        setIsLoading(false);
+        if (seq === profileSeqRef.current && activeUserIdRef.current === userId) {
+          setIsLoading(false);
+        }
       }
     },
     [profileRepo, user?.displayName, user?.createdAt]
@@ -114,9 +134,13 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({
 
   const loadSavedPlaces = useCallback(
     async (userId: string) => {
+      const seq = ++placesSeqRef.current;
       setIsLoadingPlaces(true);
       try {
         const result = await profileRepo.getSavedPlaces(userId);
+        if (seq !== placesSeqRef.current || activeUserIdRef.current !== userId) {
+          return;
+        }
         if (result?.success) {
           setSavedPlaces(result.data);
         } else if (result?.error) {
@@ -124,9 +148,14 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({
           setError(result.error);
         }
       } catch (err: unknown) {
+        if (seq !== placesSeqRef.current || activeUserIdRef.current !== userId) {
+          return;
+        }
         logger.error('Unexpected exception while loading saved places', err);
       } finally {
-        setIsLoadingPlaces(false);
+        if (seq === placesSeqRef.current && activeUserIdRef.current === userId) {
+          setIsLoadingPlaces(false);
+        }
       }
     },
     [profileRepo]
@@ -134,18 +163,27 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({
 
   const loadPreferences = useCallback(
     async (userId: string) => {
+      const seq = ++preferencesSeqRef.current;
       setIsLoadingPreferences(true);
       try {
         const result = await profileRepo.getPreferences(userId);
+        if (seq !== preferencesSeqRef.current || activeUserIdRef.current !== userId) {
+          return;
+        }
         if (result?.success) {
           setPreferences(result.data);
         } else if (result?.error) {
           logger.warn('Failed to load preferences', result.error);
         }
       } catch (err: unknown) {
+        if (seq !== preferencesSeqRef.current || activeUserIdRef.current !== userId) {
+          return;
+        }
         logger.error('Unexpected exception while loading preferences', err);
       } finally {
-        setIsLoadingPreferences(false);
+        if (seq === preferencesSeqRef.current && activeUserIdRef.current === userId) {
+          setIsLoadingPreferences(false);
+        }
       }
     },
     [profileRepo]
@@ -154,11 +192,16 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({
   // Synchronize with auth state changes
   useEffect(() => {
     if (isAuthenticated && user?.id) {
+      activeUserIdRef.current = user.id;
       loadProfile(user.id);
       loadSavedPlaces(user.id);
       loadPreferences(user.id);
     } else {
-      // User signed out or guest: purge all state
+      // User signed out or guest: cancel in-flight operations and purge all state
+      ++profileSeqRef.current;
+      ++placesSeqRef.current;
+      ++preferencesSeqRef.current;
+      activeUserIdRef.current = null;
       setProfile(null);
       setSavedPlaces([]);
       setPreferences(null);

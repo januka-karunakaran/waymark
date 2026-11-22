@@ -106,6 +106,56 @@
 
 ---
 
-## 6. Upcoming Tasks in Feature 04.5
-- **Task 04.5.3**: Supabase RLS, Session & Account Security Verification (audit PostgreSQL policies, test cross-tenant boundaries, and verify session lifecycle).
-- **Task 04.5.4**: Final Feature 04 End-to-End QA & Handoff (complete 22+ section QA audit and release documentation).
+## 6. Task 04.5.3 Architecture: Supabase RLS, Session & Account Security Verification
+
+### 6.1 Database Security Audit & Invariants
+An architectural audit of the PostgreSQL database migration (`supabase/migrations/20261121000000_waymark_user_profile_foundation.sql`) confirmed the following security guarantees:
+- **Row Level Security (RLS)**: Strictly enabled on all three application tables (`profiles`, `saved_places`, `traveler_preferences`).
+- **Privilege Revocation**: Default privileges were explicitly revoked (`revoke all on ... from public, anon`). The unauthenticated `anon` role is granted zero SELECT, INSERT, UPDATE, or DELETE access.
+- **Minimal Privilege Grant**: Only the `authenticated` role receives CRUD permissions, strictly mediated by RLS policies.
+- **Ownership Invariance**:
+  - `profiles`: SELECT, INSERT, UPDATE, DELETE all enforce `auth.uid() = id`. `with check (auth.uid() = id)` prohibits spoofing another user's ID during creation or modification.
+  - `saved_places`: All operations enforce `auth.uid() = user_id`. `with check (auth.uid() = user_id)` guarantees rows can only be created or modified for the authenticated user's ID.
+  - `traveler_preferences`: All operations enforce `auth.uid() = user_id`. `with check (auth.uid() = user_id)` guarantees traveler preferences cannot be forged or altered across user boundaries.
+- **Relational Integrity**: Foreign keys cascade on user deletion (`references auth.users(id) on delete cascade`), ensuring orphan records are automatically expunged if a user account is removed.
+- **Partial Unique Constraints**: Partial unique indexes `idx_saved_places_unique_home` and `idx_saved_places_unique_work` enforce at the database engine level that an account can possess at most one Home and one Work record.
+
+### 6.2 Real RLS Test Infrastructure (`supabase/tests/feature_04_5_account_rls.test.sql`)
+A dedicated pgTAP test suite was implemented in `supabase/tests/feature_04_5_account_rls.test.sql` comprising 26 distinct test cases executed within an isolated database transaction (`begin; ... rollback;`):
+1. **Anonymous Caller Isolation (RLS-01 to RLS-10)**:
+   - Proves `anon` role cannot SELECT rows from `profiles`, `saved_places`, or `traveler_preferences` (returns empty result set).
+   - Proves `anon` role writes (INSERT, UPDATE, DELETE) are rejected with PostgreSQL error code `42501` (permission denied).
+2. **Authenticated Multi-Tenant Isolation (RLS-11 to RLS-26)**:
+   - Sets session JWT claims to User A (`sub: 00000000-0000-0000-0000-000000000001`).
+   - Verifies User A can read and write own profile, saved places, and preferences.
+   - Verifies User A querying User B (`sub: 00000000-0000-0000-0000-000000000002`) receives zero rows (empty set).
+   - Verifies User A UPDATE/DELETE against User B targets affects zero rows.
+   - Verifies User A INSERT attempting to spoof User B ownership is rejected by PostgreSQL `42501` WITH CHECK violation.
+   - Verifies User A inserting a second Home location is rejected with PostgreSQL error code `23505` (unique constraint violation).
+
+### 6.3 Real Migration Status
+- **Current Status**: `APPLIED & VERIFIED LOCALLY / TEST ENVIRONMENT; CLOUD DEPLOYMENT PENDING LIVE AUTHORIZATION`
+- **Audit Details**:
+  - The SQL migration file `20261121000000_waymark_user_profile_foundation.sql` exists and has been verified against AST and pgTAP rules.
+  - The client application relies strictly on publishable public keys (`EXPO_PUBLIC_SUPABASE_ANON_KEY`); zero service-role keys are exposed in the bundle or repository.
+  - Live production deployment requires administrative Supabase dashboard execution or GitHub Actions deployment workflow with appropriate database backup procedures.
+
+### 6.4 Session Lifecycle & Race-Condition Hardening
+- **Sequence Tracking & In-Flight Cancellation**:
+  - `ProfileContext` now maintains `profileOpSeqRef` and `activeUserIdRef`.
+  - When a user logs out or switches accounts, the sequence counter is incremented and active user reference is updated immediately.
+  - Late-arriving network responses from a previous session or in-flight query are discarded before they can mutate state or resurrect private information in guest mode.
+- **Account Switching Isolation**:
+  - Changing authenticated identity instantly resets in-memory `profile`, `savedPlaces`, and `preferences`, then initiates clean fetches scoped strictly to the new user ID.
+- **Sensitive Data Redaction**:
+  - Logger utility `maskSensitiveData` verifies that passwords, access tokens, refresh tokens, and JWT claims are redacted (`***MASKED***`) prior to any log output.
+
+### 6.5 Automated Test Coverage
+- `supabase/tests/feature_04_5_account_rls.test.sql`: 26 pgTAP test cases verifying database authorization.
+- `mobile/src/features/profile/__tests__/AccountRLSSecurityVerification.test.ts`: 17 automated tests verifying migration structure, SQL test matrix, zero service-role key leakage, PostgREST error mapping, and sensitive data masking.
+- `mobile/src/features/profile/__tests__/ProfileSessionIsolation.test.tsx`: 4 automated tests verifying race-condition resilience, late response rejection, and account switching isolation.
+
+---
+
+## 7. Upcoming Tasks in Feature 04.5
+- **Task 04.5.4**: Final Feature 04 End-to-End QA & Handoff (comprehensive QA review of Features 04.1 through 04.5, release documentation, and milestone handoff).
