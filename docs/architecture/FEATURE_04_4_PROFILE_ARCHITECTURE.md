@@ -188,7 +188,29 @@ The migration script `20261121000000_waymark_user_profile_foundation.sql` is str
 
 ## 8. Feature 04.4 Implementation Roadmap
 
-- [x] **Task 04.4.1 (Current):** Profile Database Architecture & Supabase RLS (Migration, Domain Types, Validation, Repository Contracts, Architecture Documentation, Unit Tests).
-- [ ] **Task 04.4.2:** Profile View, Edit & Persistence (UI Screen, Account View, Edit Profile Form, Supabase Real-time updates).
+- [x] **Task 04.4.1:** Profile Database Architecture & Supabase RLS (Migration, Domain Types, Validation, Repository Contracts, Architecture Documentation, Unit Tests).
+- [x] **Task 04.4.2 (Current):** Profile View, Edit & Persistence (SupabaseProfileRepository, ProfileContext, ProfileProvider, ProfileViewCard, ProfileEditModal, Account Screen Integration).
 - [ ] **Task 04.4.3:** Saved Places & Traveler Preferences (Home/Work shortcut configuration, Favorite management, Transit mode filters, Distance units).
 - [ ] **Task 04.4.4:** Security, Integration & Final QA (RLS isolation penetration tests, Error handling, Accessibility audit, Full CI Quality gates).
+
+---
+
+## 9. Task 04.4.2 — Profile View, Edit & Persistence Implementation
+
+### 9.1 Data Access Layer (`SupabaseProfileRepository`)
+- Concrete implementation of `ProfileRepository` leveraging the singleton `SupabaseClient` (`getSupabaseClient()`).
+- Guarantees:
+  - Client availability check before execution; unconfigured states safely yield `UNAUTHENTICATED` error codes without network queries.
+  - Strict mapping of PostgreSQL / PostgREST error codes (`PGRST116` to `NOT_FOUND`, `23505` to `CONFLICT`, `42501` to `UNAUTHENTICATED`).
+  - Pre-flight client-side input bounds checking (`validateDisplayName`, `validateAvatarUrl`) preventing malicious or malformed database requests.
+
+### 9.2 Context & Lifecycle Synchronization (`ProfileContext` / `ProfileProvider`)
+- Synchronized with `AuthProvider`:
+  - When authenticated: loads profile row matching `user.id`. If no row exists, lazily populates an initial local profile from authenticated metadata.
+  - When unauthenticated or on sign out: automatically purges profile state, resetting error and loading states.
+  - Exposes `updateProfile(input)`: optimistic/confirmed state updates with scoped loading and error handling.
+
+### 9.3 UI Components & Accessibility
+- **`ProfileViewCard`:** High-contrast presentation card displaying the traveler avatar (or initial badge fallback), display name, read-only verified email badge, membership date, and accessible "Edit Profile" action button.
+- **`ProfileEditModal`:** Accessible modal dialog (`accessibilityViewIsModal={true}`) offering real-time character counters, input boundary validations (1-50 chars for name, http/https URLs for avatar), error banner feedback, and loading indicators during persistence.
+- **`AccountScreen` Integration:** Transparently presents `ProfileViewCard` and edit controls to authenticated travelers, while preserving guest navigation mode for unregistered users.

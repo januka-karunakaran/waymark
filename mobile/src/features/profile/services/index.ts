@@ -4,3 +4,4 @@
  */
 
 export * from './ProfileRepository';
+export * from './SupabaseProfileRepository';
