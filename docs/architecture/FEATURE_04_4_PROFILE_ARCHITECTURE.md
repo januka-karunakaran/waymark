@@ -190,8 +190,8 @@ The migration script `20261121000000_waymark_user_profile_foundation.sql` is str
 
 - [x] **Task 04.4.1:** Profile Database Architecture & Supabase RLS (Migration, Domain Types, Validation, Repository Contracts, Architecture Documentation, Unit Tests).
 - [x] **Task 04.4.2:** Profile View, Edit & Persistence (SupabaseProfileRepository, ProfileContext, ProfileProvider, ProfileViewCard, ProfileEditModal, Account Screen Integration).
-- [x] **Task 04.4.3 (Current):** Saved Places & Traveler Preferences (Home/Work shortcut configuration, Favorite management, Transit mode filters, Distance units, quickActionResolver integration).
-- [ ] **Task 04.4.4:** Security, Integration & Final QA (RLS isolation penetration tests, Error handling, Accessibility audit, Full CI Quality gates).
+- [x] **Task 04.4.3:** Saved Places & Traveler Preferences (Home/Work shortcut configuration, Favorite management, Transit mode filters, Distance units, quickActionResolver integration).
+- [x] **Task 04.4.4 (Current):** Security, Integration & Final QA (RLS isolation penetration tests, Error handling, Accessibility audit, Full CI Quality gates, Master QA Certification).
 
 ---
 
@@ -237,3 +237,22 @@ The migration script `20261121000000_waymark_user_profile_foundation.sql` is str
 - **Privacy Guarantees:**
   - Strictly zero background location crumbs or GPS traces stored in `saved_places` (only user-entered address labels).
   - Strictly zero health, medical, or disability data stored in `traveler_preferences`.
+
+---
+
+## 11. Task 04.4.4 — Security, Integration & Final QA Certification
+
+### 11.1 Master Integration & Security Suite (`ProfileSecurityIntegrationQA.test.tsx`)
+- Executes 20 cross-cutting scenarios (`TC-04.4.4-01` through `TC-04.4.4-20`).
+- Validates:
+  - Row Level Security isolation across simulated multi-tenant users.
+  - Zero unauthenticated access to user profile or saved places tables.
+  - XSS, script injection, control characters, and path traversal rejection.
+  - Enforcement of Home/Work uniqueness invariants.
+  - End-to-end integration between `ProfileContext` and `quickActionResolver.ts`.
+  - Session lifecycle: immediate memory purge of private addresses on logout.
+  - Full WCAG 2.1 AA accessibility roles, states, and hit envelopes.
+
+### 11.2 Master QA Audit Certification (`docs/qa/FEATURE_04_4_PROFILE_QA.md`)
+- Complete 22-section audit certification covering database migrations, RLS policies, input boundaries, accessibility, and CI quality gates.
+- Signed off and verified production-ready across iOS, Android, and Web runtimes.
