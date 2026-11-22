@@ -86,5 +86,5 @@ export interface ResolvedQuickAction {
  */
 export interface QuickActionResolverOptions {
   /** Optional dictionary of saved user addresses (e.g. home/work) */
-  savedAddresses?: Record<string, string>;
+  savedAddresses?: Record<string, string | null | undefined>;
 }

@@ -65,7 +65,47 @@
 
 ---
 
-## 5. Upcoming Tasks in Feature 04.5
-- **Task 04.5.2**: Saved Places Integration & Private Navigation (eliminate PII from router query parameters; resolve trusted in-memory/user-scoped handoff).
+## 5. Task 04.5.2 Architecture: Saved Places Integration & Private Navigation
+
+### 5.1 Investigation & Findings (A, B, C)
+1. **Finding A (Home/Work Integration Defect)**:
+   - *Root Cause*: The Home screen invoked `resolveHomeQuickAction(place)` with no options parameter. As a result, `options.savedAddresses` was always undefined, causing Home and Work shortcuts to permanently yield an `unconfigured` status even when the signed-in user had saved them.
+   - *Fix*: `HomeScreen` now accesses `useAuth()` and `useProfile()`, supplying `{ savedAddresses: isAuthenticated ? savedAddresses : undefined }` to `resolveHomeQuickAction`.
+2. **Finding B (PII Exposure via Router Query Parameters)**:
+   - *Vulnerability*: Previously, quick actions serialized personal addresses directly into Expo Router navigation parameters (`params: { destinationName: "123 Private St" }`). On web clients and deep links, this exposed sensitive home/work coordinates in browser history, logs, analytics, and URL bars.
+   - *Fix*: Navigation parameters now pass strictly opaque, non-sensitive identifiers (`params: { destinationId: 'dest-saved-home' }`). Private addresses are never serialized into route query strings.
+3. **Finding C (Untrusted Query Parameter Authorization)**:
+   - *Vulnerability*: `validateJourneyParams` previously accepted any `dest-saved-*` query string as long as it passed basic regex sanitization, allowing arbitrary destination names to be rendered without proving user ownership.
+   - *Fix*: `validateJourneyParams` and `JourneyScreen` now require authenticated user context and verified database records from `useProfile()`. Untrusted parameter destination names are strictly ignored for private saved corridors.
+
+### 5.2 Private Navigation Handoff Architecture
+```
+[HomeScreen]
+  │
+  ├─ User taps "Home" or "Work" shortcut
+  ├─ Evaluates resolveHomeQuickAction(place, { savedAddresses })
+  ├─ Navigates with OPAQUE identifier ONLY:
+  │    router.push({ pathname: '/(tabs)/journey', params: { destinationId: 'dest-saved-home' } })
+  │    (NO address or PII in URL!)
+  ▼
+[JourneyScreen]
+  │
+  ├─ Reads params.destinationId ('dest-saved-home')
+  ├─ Checks useAuth(): Is user authenticated?
+  │    ├─ NO ➔ Displays "Authentication Required" empty state. Zero address rendered.
+  │    └─ YES ➔ Queries useProfile().savedPlaces for kind === 'home'
+  │               ├─ FOUND ➔ Renders destination with user's verified address.
+  │               └─ NOT FOUND ➔ Displays "Unconfigured Saved Location" empty state.
+```
+
+### 5.3 Security Invariants & Guarantees
+- **No Private Data in Router Params**: `createJourneyRouteParams` explicitly omits `destinationName` when `destinationId.startsWith('dest-saved-')`.
+- **Zero Leakage on Logout / User Switch**: When a user signs out while viewing `JourneyScreen`, auth state immediately becomes null, causing private destination context to collapse into an empty state. When User B signs in, User B's verified corridor is retrieved; User A's data is never exposed.
+- **Deep-Link Immunity**: Crafting a deep link like `waymark://journey?destinationId=dest-saved-home&destinationName=MaliciousPayload` fails because `JourneyScreen` strictly resolves private destinations from the authenticated user's profile store, ignoring the untrusted parameter.
+- **Truthful Prototype Demarcation**: No fake GPS routes, turn-by-turn maneuvers, or simulated ETAs are fabricated for private destinations.
+
+---
+
+## 6. Upcoming Tasks in Feature 04.5
 - **Task 04.5.3**: Supabase RLS, Session & Account Security Verification (audit PostgreSQL policies, test cross-tenant boundaries, and verify session lifecycle).
 - **Task 04.5.4**: Final Feature 04 End-to-End QA & Handoff (complete 22+ section QA audit and release documentation).

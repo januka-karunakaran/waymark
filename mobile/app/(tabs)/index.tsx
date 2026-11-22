@@ -15,6 +15,8 @@ import {
   resolveHomeQuickAction,
   useHomeData
 } from '../../src/features/home';
+import { useSafeAuth } from '../../src/features/auth';
+import { useProfile } from '../../src/features/profile';
 import {
   DiscoveryCategory,
   DiscoveryItem
@@ -22,6 +24,8 @@ import {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { isAuthenticated } = useSafeAuth();
+  const { savedAddresses, isLoadingPlaces, error: profileError } = useProfile();
   const {
     homeData,
     discoveryPayload,
@@ -74,7 +78,16 @@ export default function HomeScreen() {
       // Guard against double triggers / rapid clicks
       if (isNavigatingRef.current) return;
 
-      const resolved = resolveHomeQuickAction(place);
+      const resolved = resolveHomeQuickAction(place, {
+        savedAddresses: isAuthenticated
+          ? {
+              home: savedAddresses.home ?? undefined,
+              work: savedAddresses.work ?? undefined,
+              'place-home': savedAddresses.home ?? undefined,
+              'place-work': savedAddresses.work ?? undefined
+            }
+          : undefined
+      });
 
       if (resolved.type === 'navigate' && resolved.targetRoute) {
         isNavigatingRef.current = true;
@@ -82,13 +95,19 @@ export default function HomeScreen() {
         setGuidanceMessage(null);
 
         if (resolved.destinationContext) {
+          const isPrivate = resolved.destinationContext.destinationId.startsWith('dest-saved-');
           router.push({
             pathname: resolved.targetRoute as unknown as Href,
-            params: {
-              destinationId: resolved.destinationContext.destinationId,
-              destinationName: resolved.destinationContext.destinationName,
-              source: 'quick_shortcut'
-            }
+            params: isPrivate
+              ? {
+                  destinationId: resolved.destinationContext.destinationId,
+                  source: 'quick_shortcut'
+                }
+              : {
+                  destinationId: resolved.destinationContext.destinationId,
+                  destinationName: resolved.destinationContext.destinationName,
+                  source: 'quick_shortcut'
+                }
           } as unknown as Href);
         } else {
           router.push(resolved.targetRoute as Href);
@@ -129,7 +148,7 @@ export default function HomeScreen() {
         }
       }
     },
-    [router]
+    [router, isAuthenticated, savedAddresses, isLoadingPlaces, profileError]
   );
 
   const handleSelectDiscoveryItem = useCallback(
@@ -182,7 +201,20 @@ export default function HomeScreen() {
           accessibilityLiveRegion="polite"
           testID="home-guidance-banner"
         >
-          <View style={styles.guidanceContent}>
+          <Pressable
+            style={styles.guidanceContent}
+            onPress={() => {
+              if (!isAuthenticated) {
+                router.push('/(auth)/sign-in');
+              } else {
+                router.push('/(auth)/account');
+              }
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Configure personal locations"
+            accessibilityHint="Navigates to configure Home and Work locations in account"
+            testID="home-guidance-action"
+          >
             <Info
               size={16}
               color={theme.colors.beaconGold}
@@ -196,7 +228,7 @@ export default function HomeScreen() {
             >
               {guidanceMessage}
             </AppText>
-          </View>
+          </Pressable>
           <Pressable
             onPress={() => setGuidanceMessage(null)}
             accessibilityRole="button"

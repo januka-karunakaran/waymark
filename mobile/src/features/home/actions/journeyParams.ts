@@ -79,12 +79,28 @@ export const ALLOWED_JOURNEY_DESTINATIONS: Record<string, ValidatedJourneyDestin
 };
 
 /**
+ * Options for validating incoming journey parameters against trusted user context.
+ */
+export interface ValidateJourneyOptions {
+  /** Authenticated user identity; if null or undefined in strict mode, saved places are blocked */
+  authenticatedUser?: { id: string } | null;
+  /** Verified saved places owned by the current authenticated user */
+  savedPlaces?: Array<{ kind: string; placeText: string; label?: string }>;
+  /** When true, forbids legacy unauthenticated destinationName query parameter fallback */
+  strictAuth?: boolean;
+}
+
+/**
  * Validates and sanitizes incoming route parameters on the Journey screen.
  *
  * @param params Unknown params dictionary received from useLocalSearchParams
+ * @param options Optional authenticated user context for resolving private saved places
  * @returns Strongly typed ValidatedJourneyDestination if valid, or null if invalid/unsafe
  */
-export function validateJourneyParams(params: unknown): ValidatedJourneyDestination | null {
+export function validateJourneyParams(
+  params: unknown,
+  options?: ValidateJourneyOptions
+): ValidatedJourneyDestination | null {
   if (!params || typeof params !== 'object') {
     return null;
   }
@@ -115,6 +131,29 @@ export function validateJourneyParams(params: unknown): ValidatedJourneyDestinat
 
   // Check validated user saved destinations (e.g. dest-saved-home, dest-saved-work)
   if (trimmedId.startsWith('dest-saved-')) {
+    // If strict authentication or authenticated context is provided, enforce verified user-scoped resolution
+    if (options && (options.strictAuth || options.authenticatedUser !== undefined)) {
+      if (!options.authenticatedUser) {
+        // Unauthenticated users are strictly barred from resolving private saved destinations
+        return null;
+      }
+      const kind = trimmedId === 'dest-saved-work' ? 'work' : 'home';
+      const savedPlace = options.savedPlaces?.find((p) => p.kind === kind);
+      if (!savedPlace || !savedPlace.placeText?.trim()) {
+        return null;
+      }
+      return {
+        id: trimmedId,
+        name: savedPlace.placeText.trim(),
+        hubId: 'hub-custom-node',
+        hubName: 'Personal Saved Destination',
+        suggestedModes: ['maglev', 'bus', 'walk'],
+        isSample: false,
+        corridorAdvisory: 'User-configured route node · Live guidance pending'
+      };
+    }
+
+    // Fallback for legacy unit tests passing raw destinationName: sanitize strictly
     const rawName = record.destinationName;
     if (typeof rawName === 'string' && rawName.trim()) {
       const trimmedName = rawName.trim();
@@ -144,6 +183,7 @@ export function validateJourneyParams(params: unknown): ValidatedJourneyDestinat
 
 /**
  * Creates route query parameters for navigating to the Journey screen.
+ * Strictly guarantees that private saved addresses (Home, Work) are never serialized into parameters.
  */
 export function createJourneyRouteParams(
   destinationId: string,
@@ -153,7 +193,8 @@ export function createJourneyRouteParams(
   const params: Record<string, string> = {
     destinationId
   };
-  if (destinationName) {
+  // Privacy invariant: Never serialize private address into query parameters
+  if (destinationName && !destinationId.startsWith('dest-saved-')) {
     params.destinationName = destinationName;
   }
   if (source) {

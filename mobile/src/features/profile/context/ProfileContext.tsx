@@ -121,6 +121,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({
           setSavedPlaces(result.data);
         } else if (result?.error) {
           logger.warn('Failed to load saved places', result.error);
+          setError(result.error);
         }
       } catch (err: unknown) {
         logger.error('Unexpected exception while loading saved places', err);
