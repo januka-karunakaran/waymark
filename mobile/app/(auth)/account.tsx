@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Shield, Sparkles, Compass, MapPin } from 'lucide-react-native';
@@ -8,6 +8,11 @@ import {
   AuthStatusNotice,
   useAuth
 } from '../../src/features/auth';
+import {
+  useProfile,
+  ProfileViewCard,
+  ProfileEditModal
+} from '../../src/features/profile';
 import { AppButton } from '../../src/components/buttons/AppButton';
 import { AppCard } from '../../src/components/cards/AppCard';
 import { AppText } from '../../src/components/typography/AppText';
@@ -21,6 +26,8 @@ import { theme } from '../../src/theme';
 export default function AccountScreen() {
   const router = useRouter();
   const { serviceReadiness, user, isAuthenticated, signOut } = useAuth();
+  const { profile, updateProfile, isSaving } = useProfile();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const handleReturnHome = () => {
     if (router.canGoBack()) {
@@ -36,6 +43,14 @@ export default function AccountScreen() {
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleSaveProfile = async (
+    displayName: string | null,
+    avatarUrl: string | null
+  ): Promise<boolean> => {
+    const res = await updateProfile({ displayName, avatarUrl });
+    return res.success;
   };
 
   const isConfigured = serviceReadiness !== 'not_configured';
@@ -77,20 +92,41 @@ export default function AccountScreen() {
         />
       )}
 
-      {/* Current Navigator Status Card */}
-      <AppCard style={styles.card} testID="account-status-card">
-        <View style={styles.cardHeader}>
-          <Compass size={20} color={theme.colors.beaconGold} accessible={false} />
-          <AppText variant="h3" style={styles.cardTitle}>
-            Current Navigation Mode
+      {/* Profile Card or Current Navigator Status Card */}
+      {isAuthenticated && user ? (
+        <ProfileViewCard
+          profile={profile}
+          userEmail={user.email}
+          isEmailVerified={user.emailVerified}
+          onEditPress={() => setIsEditModalOpen(true)}
+          testID="account-profile-card"
+        />
+      ) : (
+        <AppCard style={styles.card} testID="account-status-card">
+          <View style={styles.cardHeader}>
+            <Compass size={20} color={theme.colors.beaconGold} accessible={false} />
+            <AppText variant="h3" style={styles.cardTitle}>
+              Current Navigation Mode
+            </AppText>
+          </View>
+          <AppText variant="body" style={styles.cardBody}>
+            You are currently traveling as an Anonymous Guest Navigator. All planetary transit schedules, vector navigation, and mission corridors are active.
           </AppText>
-        </View>
-        <AppText variant="body" style={styles.cardBody}>
-          {isAuthenticated && user
-            ? `Signed in as ${user.displayName || user.email} (${user.emailVerified ? 'Verified' : 'Pending Verification'})`
-            : 'You are currently traveling as an Anonymous Guest Navigator. All planetary transit schedules, vector navigation, and mission corridors are active.'}
-        </AppText>
-      </AppCard>
+        </AppCard>
+      )}
+
+      {/* Edit Profile Modal */}
+      {isAuthenticated && user && (
+        <ProfileEditModal
+          visible={isEditModalOpen}
+          initialDisplayName={profile?.displayName || user.displayName || null}
+          initialAvatarUrl={profile?.avatarUrl || null}
+          isSaving={isSaving}
+          onSave={handleSaveProfile}
+          onClose={() => setIsEditModalOpen(false)}
+          testID="account-profile-edit-modal"
+        />
+      )}
 
       {/* Capabilities Information Card */}
       <AppCard style={styles.card} testID="account-features-card">

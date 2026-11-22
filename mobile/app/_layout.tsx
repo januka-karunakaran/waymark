@@ -1,9 +1,10 @@
-﻿import React from 'react';
+import React from 'react';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { NetworkStatusBanner } from '../src/components/NetworkStatusBanner';
 import { AuthProvider } from '../src/features/auth';
+import { ProfileProvider } from '../src/features/profile';
 import { theme } from '../src/theme';
 
 export default function RootLayout() {
@@ -11,17 +12,19 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <AuthProvider>
-          <NetworkStatusBanner />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: theme.colors.abyssVoid }
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
-          </Stack>
+          <ProfileProvider>
+            <NetworkStatusBanner />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: theme.colors.abyssVoid }
+              }}
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
+            </Stack>
+          </ProfileProvider>
         </AuthProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
