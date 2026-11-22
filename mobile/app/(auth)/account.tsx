@@ -109,7 +109,7 @@ export default function AccountScreen() {
         <AuthStatusNotice
           variant="info"
           title="Account Verified"
-          message={`Authenticated session active for ${user.email}. Planetary transit preferences and synchronized route bookmarks enabled.`}
+          message={`Authenticated session active for ${user.email}. Personal traveler profile and saved corridors are synchronized.`}
           testID="account-authenticated-notice"
         />
       ) : (
@@ -158,7 +158,7 @@ export default function AccountScreen() {
             </AppText>
           </View>
           <AppText variant="body" style={styles.cardBody}>
-            You are currently traveling as an Anonymous Guest Navigator. All planetary transit schedules, vector navigation, and mission corridors are active.
+            You are currently traveling as an Anonymous Guest Navigator. Public transit network discovery and planetary vector mapping are active.
           </AppText>
         </AppCard>
       )}
@@ -199,13 +199,13 @@ export default function AccountScreen() {
         <View style={styles.featureItem}>
           <Shield size={16} color={theme.colors.textMuted} accessible={false} />
           <AppText variant="caption" style={styles.featureText}>
-            Personalized transit passes & synchronized route bookmarks
+            Personalized transit passes & custom destination shortcuts
           </AppText>
         </View>
         <View style={styles.featureItem}>
           <MapPin size={16} color={theme.colors.textMuted} accessible={false} />
           <AppText variant="caption" style={styles.featureText}>
-            Frequent corridors & biometric boarding verification
+            Frequent corridors & multimodal routing preferences
           </AppText>
         </View>
         {!isAuthenticated && (
@@ -221,6 +221,14 @@ export default function AccountScreen() {
       <View style={styles.actionContainer}>
         {isAuthenticated ? (
           <>
+            <AppButton
+              title="Account Settings & Privacy"
+              variant="secondary"
+              size="lg"
+              onPress={() => router.push('/(auth)/settings')}
+              accessibilityHint="Navigates to account security, identity, and privacy settings"
+              testID="btn-account-settings"
+            />
             <AppButton
               title="Sign Out"
               variant="secondary"
@@ -263,6 +271,14 @@ export default function AccountScreen() {
               onPress={() => router.push('/(auth)/sign-up')}
               accessibilityHint="Navigates to the account registration interface"
               testID="btn-navigate-sign-up"
+            />
+            <AppButton
+              title="Account Settings & Privacy"
+              variant="secondary"
+              size="lg"
+              onPress={() => router.push('/(auth)/settings')}
+              accessibilityHint="Navigates to privacy settings and guest mode disclosures"
+              testID="btn-account-settings-guest"
             />
             <AppButton
               title="Continue as Guest"
