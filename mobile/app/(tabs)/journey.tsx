@@ -7,18 +7,26 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { AppCard } from '../../src/components/cards';
 import { AppText } from '../../src/components/typography';
 import { AppButton } from '../../src/components/buttons';
+import { useSafeAuth } from '../../src/features/auth';
+import { useProfile } from '../../src/features/profile';
 import { validateJourneyParams } from '../../src/features/home/actions/journeyParams';
 import { theme } from '../../src/theme';
 
 export default function JourneyScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { user, isAuthenticated } = useSafeAuth();
+  const { savedPlaces } = useProfile();
   const [isDismissed, setIsDismissed] = useState(false);
 
   const destination = useMemo(() => {
     if (isDismissed) return null;
-    return validateJourneyParams(params);
-  }, [params, isDismissed]);
+    return validateJourneyParams(params, {
+      authenticatedUser: isAuthenticated && user ? user : null,
+      savedPlaces: isAuthenticated ? savedPlaces : [],
+      strictAuth: true
+    });
+  }, [params, isDismissed, isAuthenticated, user, savedPlaces]);
 
   // Reset dismissal state whenever the destination query parameter changes
   useEffect(() => {
@@ -165,6 +173,24 @@ export default function JourneyScreen() {
               </View>
             </AppCard>
           </View>
+        ) : params.destinationId && params.destinationId.toString().startsWith('dest-saved-') ? (
+          !isAuthenticated ? (
+            <EmptyState
+              title="Authentication Required"
+              message="Saved destinations are private to your personal Waymark account. Please sign in to access this corridor."
+              actionLabel="Sign In with Waymark ID"
+              onAction={() => router.push('/(auth)/sign-in')}
+              testID="journey-auth-required-state"
+            />
+          ) : (
+            <EmptyState
+              title="Unconfigured Saved Location"
+              message="This private destination has not been configured in your account settings yet."
+              actionLabel="Configure Saved Places"
+              onAction={() => router.push('/(auth)/account')}
+              testID="journey-unconfigured-place-state"
+            />
+          )
         ) : (
           <EmptyState
             title="Active Journey Timeline"

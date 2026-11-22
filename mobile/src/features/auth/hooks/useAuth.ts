@@ -14,3 +14,25 @@ export function useAuth(): AuthContextValue {
   }
   return context;
 }
+
+/**
+ * useSafeAuth
+ *
+ * Safe variant that gracefully defaults to an unauthenticated guest state
+ * when rendered in standalone screens or isolated unit tests outside an AuthProvider.
+ */
+export function useSafeAuth(): Partial<AuthContextValue> & {
+  isAuthenticated: boolean;
+  user: AuthContextValue['user'];
+} {
+  const context = useContext(AuthContext);
+  if (!context) {
+    return {
+      isAuthenticated: false,
+      user: null,
+      serviceReadiness: 'ready',
+      status: 'guest'
+    };
+  }
+  return context;
+}
