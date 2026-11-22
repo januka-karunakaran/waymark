@@ -285,7 +285,48 @@ export class SupabaseProfileRepository implements ProfileRepository {
     };
 
     try {
-      // If Home or Work, conflict on (user_id, kind) is handled by the unique index
+      // If Home or Work, check if existing record exists for this user to update it
+      if (sanitized.kind === 'home' || sanitized.kind === 'work') {
+        const { data: existing } = await clientCheck.client
+          .from('saved_places')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('kind', sanitized.kind)
+          .maybeSingle();
+
+        if (existing) {
+          const { data, error } = await clientCheck.client
+            .from('saved_places')
+            .update({
+              label: sanitized.label,
+              place_text: sanitized.placeText,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', (existing as { id: string }).id)
+            .select('id, user_id, kind, label, place_text, created_at, updated_at')
+            .single();
+
+          if (error) {
+            return { success: false, error: this.mapPostgrestError(error) };
+          }
+
+          const row = data as SavedPlaceRow;
+          return {
+            success: true,
+            data: {
+              id: row.id,
+              userId: row.user_id,
+              kind: row.kind,
+              label: row.label,
+              placeText: row.place_text,
+              createdAt: row.created_at,
+              updatedAt: row.updated_at
+            }
+          };
+        }
+      }
+
+      // Insert new place (or first Home/Work)
       const { data, error } = await clientCheck.client
         .from('saved_places')
         .insert(payload)

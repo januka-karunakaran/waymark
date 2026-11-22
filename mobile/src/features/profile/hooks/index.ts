@@ -4,3 +4,8 @@
  */
 
 export * from './useProfile';
+export {
+  useSavedPlaces,
+  useSavedAddresses,
+  useTravelerPreferences
+} from '../context/ProfileContext';

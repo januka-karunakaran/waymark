@@ -41,10 +41,19 @@ describe('ProfileContext & useProfile', () => {
     mockRepo = {
       getProfile: jest.fn(),
       upsertProfile: jest.fn(),
-      getSavedPlaces: jest.fn(),
+      getSavedPlaces: jest.fn().mockResolvedValue({ success: true, data: [] }),
       upsertSavedPlace: jest.fn(),
-      deleteSavedPlace: jest.fn(),
-      getPreferences: jest.fn(),
+      deleteSavedPlace: jest.fn().mockResolvedValue({ success: true, data: undefined }),
+      getPreferences: jest.fn().mockResolvedValue({
+        success: true,
+        data: {
+          userId: 'user-001',
+          preferredModes: [],
+          distanceUnit: 'km',
+          createdAt: '2026-11-20T12:00:00Z',
+          updatedAt: '2026-11-21T10:00:00Z'
+        }
+      }),
       upsertPreferences: jest.fn()
     };
   });

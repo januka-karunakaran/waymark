@@ -189,8 +189,8 @@ The migration script `20261121000000_waymark_user_profile_foundation.sql` is str
 ## 8. Feature 04.4 Implementation Roadmap
 
 - [x] **Task 04.4.1:** Profile Database Architecture & Supabase RLS (Migration, Domain Types, Validation, Repository Contracts, Architecture Documentation, Unit Tests).
-- [x] **Task 04.4.2 (Current):** Profile View, Edit & Persistence (SupabaseProfileRepository, ProfileContext, ProfileProvider, ProfileViewCard, ProfileEditModal, Account Screen Integration).
-- [ ] **Task 04.4.3:** Saved Places & Traveler Preferences (Home/Work shortcut configuration, Favorite management, Transit mode filters, Distance units).
+- [x] **Task 04.4.2:** Profile View, Edit & Persistence (SupabaseProfileRepository, ProfileContext, ProfileProvider, ProfileViewCard, ProfileEditModal, Account Screen Integration).
+- [x] **Task 04.4.3 (Current):** Saved Places & Traveler Preferences (Home/Work shortcut configuration, Favorite management, Transit mode filters, Distance units, quickActionResolver integration).
 - [ ] **Task 04.4.4:** Security, Integration & Final QA (RLS isolation penetration tests, Error handling, Accessibility audit, Full CI Quality gates).
 
 ---
@@ -214,3 +214,26 @@ The migration script `20261121000000_waymark_user_profile_foundation.sql` is str
 - **`ProfileViewCard`:** High-contrast presentation card displaying the traveler avatar (or initial badge fallback), display name, read-only verified email badge, membership date, and accessible "Edit Profile" action button.
 - **`ProfileEditModal`:** Accessible modal dialog (`accessibilityViewIsModal={true}`) offering real-time character counters, input boundary validations (1-50 chars for name, http/https URLs for avatar), error banner feedback, and loading indicators during persistence.
 - **`AccountScreen` Integration:** Transparently presents `ProfileViewCard` and edit controls to authenticated travelers, while preserving guest navigation mode for unregistered users.
+
+---
+
+## 10. Task 04.4.3 — Saved Places & Traveler Preferences Implementation
+
+### 10.1 Saved Places Domain Management
+- **Partial Unique Index Invariants:**
+  - `idx_saved_places_unique_home` and `idx_saved_places_unique_work` guarantee at most one Home and one Work place per user.
+  - In `SupabaseProfileRepository.upsertSavedPlace`, adding a Home or Work destination automatically queries and updates the existing record if present, preserving uniqueness without constraint conflicts.
+  - Multiple custom `favorite` shortcuts can be configured with personalized labels (e.g., "Gym", "Library").
+- **Reactive Quick Action Bridge (`quickActionResolver.ts`):**
+  - `ProfileContext` derives a reactive `savedAddresses: SavedAddressesMap` (`{ home, work }`).
+  - Seamlessly consumed by `useSavedAddresses()` or `useSavedPlaces()` hooks, allowing the home screen rapid action buttons to transition immediately from the unconfigured state to live routing corridors.
+
+### 10.2 Traveler Preferences & Privacy Guardrails
+- **Transit Mode Filtering:**
+  - Whitelisted modes: `bus`, `train`, `metro`, `tram`, `ferry`, `walking`, `cycling`.
+  - Accessible chip controls (`accessibilityRole="checkbox"`) allow toggling routing priorities.
+- **Distance Telemetry:**
+  - Radio controls (`accessibilityRole="radio"`) for metric (`km`) and imperial (`mi`) units.
+- **Privacy Guarantees:**
+  - Strictly zero background location crumbs or GPS traces stored in `saved_places` (only user-entered address labels).
+  - Strictly zero health, medical, or disability data stored in `traveler_preferences`.
