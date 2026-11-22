@@ -5,3 +5,6 @@
 
 export * from './ProfileViewCard';
 export * from './ProfileEditModal';
+export * from './SavedPlacesCard';
+export * from './AddSavedPlaceModal';
+export * from './TravelerPreferencesCard';

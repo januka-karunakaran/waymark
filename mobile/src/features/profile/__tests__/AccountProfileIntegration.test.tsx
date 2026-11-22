@@ -103,6 +103,8 @@ describe('AccountScreen Profile Integration', () => {
 
     await waitFor(() => {
       expect(getByTestId('account-profile-card')).toBeTruthy();
+      expect(getByTestId('account-saved-places-card')).toBeTruthy();
+      expect(getByTestId('account-traveler-preferences-card')).toBeTruthy();
       expect(getByText('Captain Janu')).toBeTruthy();
       expect(getByText('januka@waymark.app')).toBeTruthy();
       expect(getByTestId('profile-verified-badge')).toBeTruthy();
@@ -148,6 +150,51 @@ describe('AccountScreen Profile Integration', () => {
     await waitFor(() => {
       expect(getByTestId('account-profile-edit-modal')).toBeTruthy();
       expect(getByTestId('profile-edit-dialog')).toBeTruthy();
+    });
+  });
+
+  it('opens AddSavedPlaceModal when Add Custom Shortcut button is pressed', async () => {
+    const authUser = {
+      id: 'user-001',
+      email: 'januka@waymark.app',
+      displayName: 'Captain Janu',
+      emailVerified: true
+    };
+    mockCurrentAuthState = {
+      user: authUser,
+      isAuthenticated: true,
+      serviceReadiness: 'ready',
+      signOut: jest.fn()
+    };
+
+    mockRepo.getProfile.mockResolvedValue({ success: true, data: null });
+    mockRepo.getSavedPlaces.mockResolvedValue({ success: true, data: [] });
+    mockRepo.getPreferences.mockResolvedValue({
+      success: true,
+      data: {
+        userId: 'user-001',
+        preferredModes: [],
+        distanceUnit: 'km',
+        createdAt: '2026-11-21T00:00:00Z',
+        updatedAt: '2026-11-21T00:00:00Z'
+      }
+    });
+
+    const { getByTestId } = render(
+      <ProfileProvider repository={mockRepo}>
+        <AccountScreen />
+      </ProfileProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('btn-add-favorite')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('btn-add-favorite'));
+
+    await waitFor(() => {
+      expect(getByTestId('account-add-place-modal')).toBeTruthy();
+      expect(getByTestId('add-saved-place-dialog')).toBeTruthy();
     });
   });
 });

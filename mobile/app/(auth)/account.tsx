@@ -11,7 +11,11 @@ import {
 import {
   useProfile,
   ProfileViewCard,
-  ProfileEditModal
+  ProfileEditModal,
+  SavedPlacesCard,
+  AddSavedPlaceModal,
+  TravelerPreferencesCard,
+  SavedPlaceKind
 } from '../../src/features/profile';
 import { AppButton } from '../../src/components/buttons/AppButton';
 import { AppCard } from '../../src/components/cards/AppCard';
@@ -26,8 +30,19 @@ import { theme } from '../../src/theme';
 export default function AccountScreen() {
   const router = useRouter();
   const { serviceReadiness, user, isAuthenticated, signOut } = useAuth();
-  const { profile, updateProfile, isSaving } = useProfile();
+  const {
+    profile,
+    savedPlaces,
+    preferences,
+    updateProfile,
+    addSavedPlace,
+    deleteSavedPlace,
+    updatePreferences,
+    isSaving
+  } = useProfile();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddPlaceOpen, setIsAddPlaceOpen] = useState(false);
+  const [addPlaceKind, setAddPlaceKind] = useState<SavedPlaceKind>('favorite');
 
   const handleReturnHome = () => {
     if (router.canGoBack()) {
@@ -50,6 +65,20 @@ export default function AccountScreen() {
     avatarUrl: string | null
   ): Promise<boolean> => {
     const res = await updateProfile({ displayName, avatarUrl });
+    return res.success;
+  };
+
+  const handleOpenAddPlace = (kind: SavedPlaceKind) => {
+    setAddPlaceKind(kind);
+    setIsAddPlaceOpen(true);
+  };
+
+  const handleSavePlace = async (
+    kind: SavedPlaceKind,
+    label: string,
+    placeText: string
+  ): Promise<boolean> => {
+    const res = await addSavedPlace({ kind, label, placeText });
     return res.success;
   };
 
@@ -94,13 +123,32 @@ export default function AccountScreen() {
 
       {/* Profile Card or Current Navigator Status Card */}
       {isAuthenticated && user ? (
-        <ProfileViewCard
-          profile={profile}
-          userEmail={user.email}
-          isEmailVerified={user.emailVerified}
-          onEditPress={() => setIsEditModalOpen(true)}
-          testID="account-profile-card"
-        />
+        <>
+          <ProfileViewCard
+            profile={profile}
+            userEmail={user.email}
+            isEmailVerified={user.emailVerified}
+            onEditPress={() => setIsEditModalOpen(true)}
+            testID="account-profile-card"
+          />
+
+          <SavedPlacesCard
+            savedPlaces={savedPlaces}
+            onAddPlacePress={handleOpenAddPlace}
+            onDeletePlacePress={deleteSavedPlace}
+            testID="account-saved-places-card"
+          />
+
+          <TravelerPreferencesCard
+            preferences={preferences}
+            onUpdatePreferences={async (inp) => {
+              const res = await updatePreferences(inp);
+              return res.success;
+            }}
+            isSaving={isSaving}
+            testID="account-traveler-preferences-card"
+          />
+        </>
       ) : (
         <AppCard style={styles.card} testID="account-status-card">
           <View style={styles.cardHeader}>
@@ -125,6 +173,18 @@ export default function AccountScreen() {
           onSave={handleSaveProfile}
           onClose={() => setIsEditModalOpen(false)}
           testID="account-profile-edit-modal"
+        />
+      )}
+
+      {/* Add / Edit Saved Place Modal */}
+      {isAuthenticated && user && (
+        <AddSavedPlaceModal
+          visible={isAddPlaceOpen}
+          initialKind={addPlaceKind}
+          isSaving={isSaving}
+          onSave={handleSavePlace}
+          onClose={() => setIsAddPlaceOpen(false)}
+          testID="account-add-place-modal"
         />
       )}
 
