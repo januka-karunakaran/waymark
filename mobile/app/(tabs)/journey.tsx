@@ -41,6 +41,10 @@ export default function JourneyScreen() {
     router.push('/(tabs)');
   }, [router]);
 
+  const handleExploreTickets = useCallback(() => {
+    router.push('/booking');
+  }, [router]);
+
   return (
     <ScreenWrapper title="MISSION ROUTE" subtitle="ACTIVE TRANSIT TIMELINE">
       <View style={styles.container}>
@@ -155,7 +159,7 @@ export default function JourneyScreen() {
               {/* Action Buttons */}
               <View style={styles.actionRow}>
                 <AppButton
-                  label="Clear Selection"
+                  label="Clear"
                   variant="ghost"
                   size="sm"
                   onPress={handleClearDestination}
@@ -163,7 +167,15 @@ export default function JourneyScreen() {
                   testID="journey-clear-destination"
                 />
                 <AppButton
-                  label="Return to Home"
+                  label="Explore Tickets"
+                  variant="outline"
+                  size="sm"
+                  onPress={handleExploreTickets}
+                  accessibilityHint="Navigates to the ticketing and booking experience"
+                  testID="journey-explore-tickets-button"
+                />
+                <AppButton
+                  label="Home"
                   variant="secondary"
                   size="sm"
                   onPress={handleReturnHome}
