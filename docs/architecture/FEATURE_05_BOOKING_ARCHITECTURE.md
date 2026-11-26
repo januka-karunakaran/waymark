@@ -303,3 +303,50 @@ The booking data foundation is implemented in `supabase/migrations/2026112616000
 
 ### 17.3 Security Reference
 For complete RLS policy matrices, database constraints, double-booking prevention models, and audit logs, consult `docs/security/FEATURE_05_BOOKING_SECURITY.md`.
+
+---
+
+## 18. Feature 05.1 Final Integration QA & Handoff (Task 05.1.4)
+
+### 18.1 Milestone Classification
+With the completion of Task 05.1.4:
+**FEATURE 05.1 — CODE FOUNDATION COMPLETE**
+
+### 18.2 System Boundary & Integration Topology
+```mermaid
+flowchart TD
+    User["Authenticated Traveler\n(auth.users.id)"] --> MobileApp["Waymark Mobile App\n(Feature 05)"]
+    MobileApp --> UI["Booking Catalog UI\n(Feature 05.2)"]
+    UI --> Service["BookingService Contract"]
+    Service --> InvProvider["TransitInventoryProvider\n(Unavailable Fallback)"]
+    Service --> FareProvider["FareQuoteProvider\n(Unavailable Fallback)"]
+
+    subgraph DatabaseBoundary ["PostgreSQL / Supabase Boundary (Feature 05.1.3 & 05.3)"]
+        Catalog["public.bookable_departures\n(Public Read, No Client Write)"]
+        Inventory["public.departure_inventory\n(Public Read, Capacity Invariant)"]
+        Bookings["public.booking_reservations\n(RLS: auth.uid() = user_id, No Client Write)"]
+        Idemp["public.booking_idempotency_records\n(RLS: auth.uid() = user_id)"]
+    end
+
+    InvProvider -.-> Catalog
+    InvProvider -.-> Inventory
+    UI -.-> Bookings
+    UI -.-> Idemp
+
+    subgraph FutureServices ["Future Privileged Backend (Features 05.3, 05.4, 05.5)"]
+        AtomicRPC["Atomic Reservation RPC\n(SELECT FOR UPDATE & Capacity Decrement)"]
+        PaymentGateway["Payment Processor Webhook\n(HMAC Signature Verification)"]
+        TicketAuthority["Cryptographic Ticket Issuer\n(Digital Boarding Credentials)"]
+    end
+
+    AtomicRPC --> Inventory
+    AtomicRPC --> Bookings
+    PaymentGateway --> Bookings
+    TicketAuthority --> Bookings
+```
+
+### 18.3 Handoff to Feature 05.2
+1. **Catalog Consumption**: Feature 05.2 components will consume `BookableDeparture` and `FareQuote` types directly from the barrel export `src/features/booking`.
+2. **Graceful Degraded States**: When `TransitInventoryProvider` or `FareQuoteProvider` return `NOT_CONFIGURED` or `INVENTORY_UNAVAILABLE`, the UI will render clear, accessible empty/unavailable states.
+3. **No Direct Mutations**: The mobile UI will not write directly to `booking_reservations` or `departure_inventory`. All reservation requests must route through `BookingService` boundaries.
+4. **Complete QA Documentation**: Consult `docs/qa/FEATURE_05_1_BOOKING_FOUNDATION_QA.md` for full test results, validation matrices, and deployment status.
