@@ -449,3 +449,137 @@ export function validateBookableDeparture(departure: unknown): ValidationOutcome
   };
 }
 
+/**
+ * Validates a real-time departure availability payload from an inventory provider.
+ */
+export function validateDepartureAvailability(
+  availability: unknown
+): ValidationOutcome<{
+  departureId: string;
+  isAvailable: boolean;
+  availableSeats?: number;
+  totalCapacity?: number;
+  source: string;
+  observedAt: string;
+  operatorNotice?: string;
+}> {
+  if (!availability || typeof availability !== 'object') {
+    return { isValid: false, error: 'Availability payload must be an object.' };
+  }
+
+  const rec = availability as Record<string, unknown>;
+  const depIdVal = validateIdentifier(rec.departureId, 'Departure ID');
+  if (!depIdVal.isValid) return { isValid: false, error: depIdVal.error };
+
+  if (typeof rec.isAvailable !== 'boolean') {
+    return { isValid: false, error: 'isAvailable must be a boolean.' };
+  }
+
+  if (rec.availableSeats !== undefined) {
+    if (
+      typeof rec.availableSeats !== 'number' ||
+      !Number.isInteger(rec.availableSeats) ||
+      rec.availableSeats < 0
+    ) {
+      return { isValid: false, error: 'availableSeats must be a non-negative integer.' };
+    }
+  }
+
+  if (rec.totalCapacity !== undefined) {
+    if (
+      typeof rec.totalCapacity !== 'number' ||
+      !Number.isInteger(rec.totalCapacity) ||
+      rec.totalCapacity < 0
+    ) {
+      return { isValid: false, error: 'totalCapacity must be a non-negative integer.' };
+    }
+
+    if (
+      rec.availableSeats !== undefined &&
+      (rec.availableSeats as number) > (rec.totalCapacity as number)
+    ) {
+      return {
+        isValid: false,
+        error: 'availableSeats cannot exceed totalCapacity.'
+      };
+    }
+  }
+
+  const validSources = ['sample_data', 'operator_verified', 'provider_unavailable'];
+  if (!validSources.includes(String(rec.source))) {
+    return { isValid: false, error: `Invalid inventory source '${rec.source}'.` };
+  }
+
+  const observedVal = validateIsoDate(rec.observedAt, 'Observed At');
+  if (!observedVal.isValid) return { isValid: false, error: observedVal.error };
+
+  return {
+    isValid: true,
+    sanitized: {
+      departureId: depIdVal.sanitized!,
+      isAvailable: rec.isAvailable,
+      ...(rec.availableSeats !== undefined ? { availableSeats: rec.availableSeats as number } : {}),
+      ...(rec.totalCapacity !== undefined ? { totalCapacity: rec.totalCapacity as number } : {}),
+      source: rec.source as string,
+      observedAt: observedVal.sanitized!,
+      ...(rec.operatorNotice ? { operatorNotice: String(rec.operatorNotice).slice(0, 200) } : {})
+    }
+  };
+}
+
+/**
+ * Validates a FareQuoteRequest before submission to a fare provider.
+ */
+export function validateFareQuoteRequest(
+  request: unknown
+): ValidationOutcome<{
+  departureId: string;
+  passengerCount: number;
+  fareClass?: 'standard' | 'priority' | 'comfort';
+  preferredCurrency?: string;
+}> {
+  if (!request || typeof request !== 'object') {
+    return { isValid: false, error: 'Fare quote request must be an object.' };
+  }
+
+  const rec = request as Record<string, unknown>;
+
+  // Strict anti-tampering: client cannot supply arbitrary prices or amounts
+  if ('price' in rec || 'totalPrice' in rec || 'amount' in rec || 'amountMinorUnits' in rec) {
+    return {
+      isValid: false,
+      error: 'Client cannot supply price or amount in a fare quote request.'
+    };
+  }
+
+  const depIdVal = validateIdentifier(rec.departureId, 'Departure ID');
+  if (!depIdVal.isValid) return { isValid: false, error: depIdVal.error };
+
+  const passVal = validatePassengerCount(rec.passengerCount);
+  if (!passVal.isValid) return { isValid: false, error: passVal.error };
+
+  if (rec.fareClass !== undefined) {
+    const validClasses = ['standard', 'priority', 'comfort'];
+    if (!validClasses.includes(String(rec.fareClass))) {
+      return { isValid: false, error: `Invalid fareClass '${rec.fareClass}'.` };
+    }
+  }
+
+  let sanitizedCurrency: string | undefined;
+  if (rec.preferredCurrency !== undefined) {
+    const curVal = validateCurrencyCode(rec.preferredCurrency);
+    if (!curVal.isValid) return { isValid: false, error: curVal.error };
+    sanitizedCurrency = curVal.sanitized;
+  }
+
+  return {
+    isValid: true,
+    sanitized: {
+      departureId: depIdVal.sanitized!,
+      passengerCount: passVal.sanitized!,
+      ...(rec.fareClass ? { fareClass: rec.fareClass as 'standard' | 'priority' | 'comfort' } : {}),
+      ...(sanitizedCurrency ? { preferredCurrency: sanitizedCurrency } : {})
+    }
+  };
+}
+
