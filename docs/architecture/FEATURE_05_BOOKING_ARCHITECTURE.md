@@ -251,3 +251,35 @@ In Feature 05.4, payments architecture will establish:
 | **05.3** | Reservation Engine & Database | Supabase SQL schema, RLS policies, atomic inventory hold, idempotency ledger |
 | **05.4** | Payments & Secure Checkout | Server-side payment intent, client payment sheet, webhook reconciliation |
 | **05.5** | Digital Tickets & Final QA | Cryptographic ticket issuance, boarding pass passbook, booking history, final QA |
+
+---
+
+## 16. Inventory & Fare Provider Architecture (Task 05.1.2)
+
+### 16.1 Transit Inventory Provider Contract (`TransitInventoryProvider`)
+The inventory boundary separates client consumption from underlying operational transit backends (e.g. GTFS-RT feeds, GDS aggregators, operator APIs).
+- `getReadiness()`: Evaluates operational status (`ready`, `not_configured`, `degraded`, `unavailable`).
+- `getDepartures(filters)`: Retrieves bookable departures matching origin, destination, time ranges, and transit modes.
+- `getDeparture(departureId)`: Retrieves single verified departure.
+- `checkAvailability(departureId)`: Retrieves real-time seat availability, total vehicle capacity, and operator notices.
+
+### 16.2 Fare Quote Provider Contract (`FareQuoteProvider`)
+- `getReadiness()`: Reports readiness of the pricing engine.
+- `getQuote(request)`: Submits departure ID, passenger count (1–9), fare class, and preferred ISO 4217 currency. Returns authoritative `FareQuote` in integer minor units.
+- `validateQuote(quoteId)`: Verifies whether an existing quote remains unexpired and honored.
+
+### 16.3 Production Fallback Implementations (`UnavailableInventoryProvider` & `UnavailableFareQuoteProvider`)
+In production environments without active operator agreements:
+- `UnavailableInventoryProvider`: Strictly returns `NOT_CONFIGURED` or `INVENTORY_UNAVAILABLE`.
+- `UnavailableFareQuoteProvider`: Strictly returns `NOT_CONFIGURED`.
+- **Zero Fabrication Guarantee**: Neither provider ever synthesizes fake seat counts, artificial discounts, invented departures, or simulated confirmation tokens.
+
+### 16.4 Data Provenance & Operational Separation
+To maintain absolute security and truth in user experiences:
+- **`sample_data`**: Illustrative routes, discovery recommendations, and sample destination cards. Strictly quarantined; cannot be reserved or paid.
+- **`operator_verified`**: Confirmed departures from verified transport operators with valid GTFS/operator registry credentials.
+- **`provider_unavailable`**: Departures recorded in catalog whose live operational seat availability cannot currently be verified.
+
+### 16.5 Future Integration Handoff
+- **Feature 05.2**: Will bind UI components (departure cards, seat pickers) directly to `TransitInventoryProvider` and `FareQuoteProvider`, displaying appropriate "Service Not Configured" or "Inventory Unavailable" states gracefully without crashing or fabricating mock data.
+- **Feature 05.3**: Will replace unavailable adapters with authenticated Supabase Edge Functions / Postgres RPC endpoints that verify operator credentials server-side and lock seat inventory atomically.
