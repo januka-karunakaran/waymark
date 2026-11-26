@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ticket, Sparkles } from 'lucide-react-native';
+import { Ticket, Sparkles, Search } from 'lucide-react-native';
 import {
   BookingScreenShell,
   BookingHeader,
@@ -12,6 +12,7 @@ import { UnavailableInventoryProvider } from '../../src/features/booking/provide
 import { ProviderReadiness } from '../../src/features/booking/providers/TransitInventoryProvider';
 import { AppCard } from '../../src/components/cards';
 import { AppText } from '../../src/components/typography';
+import { AppButton } from '../../src/components/buttons';
 import { theme } from '../../src/theme';
 
 export default function BookingLandingScreen() {
@@ -39,6 +40,10 @@ export default function BookingLandingScreen() {
     router.replace('/(tabs)/journey');
   };
 
+  const handleBrowseCatalog = () => {
+    router.push('/booking/catalog');
+  };
+
   return (
     <BookingScreenShell testID="booking-landing-screen">
       <BookingHeader
@@ -63,6 +68,29 @@ export default function BookingLandingScreen() {
         }
         testID="booking-landing-status-notice"
       />
+
+      {/* Catalog Search Action Card */}
+      <AppCard variant="default" style={styles.catalogActionCard} testID="booking-landing-catalog-card">
+        <View style={styles.catalogCardContent}>
+          <View style={styles.catalogIconWrapper}>
+            <Search size={20} color={theme.colors.beaconGold} />
+          </View>
+          <View style={styles.catalogTextWrapper}>
+            <AppText variant="h3" weight="bold" style={styles.catalogCardTitle}>
+              Verified Departures Catalog
+            </AppText>
+            <AppText variant="bodySmall" style={styles.catalogCardBody}>
+              Search scheduled maglev, hyperloop, and regional shuttles across active transit corridors.
+            </AppText>
+          </View>
+        </View>
+        <AppButton
+          title="Browse Departures"
+          variant="primary"
+          onPress={handleBrowseCatalog}
+          testID="booking-landing-browse-button"
+        />
+      </AppCard>
 
       {/* Prototype Demarcation Card */}
       <AppCard variant="default" style={styles.infoCard} testID="booking-landing-info-card">
@@ -93,6 +121,35 @@ export default function BookingLandingScreen() {
 }
 
 const styles = StyleSheet.create({
+  catalogActionCard: {
+    backgroundColor: theme.colors.deckInk,
+    borderRadius: theme.spacing.radii.card,
+    borderColor: theme.colors.beaconGold,
+    borderWidth: 1,
+    padding: theme.spacing.spaceMd,
+    gap: theme.spacing.spaceMd
+  },
+  catalogCardContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.spaceMd
+  },
+  catalogIconWrapper: {
+    padding: 8,
+    borderRadius: theme.spacing.radii.sm,
+    backgroundColor: theme.colors.deckInk
+  },
+  catalogTextWrapper: {
+    flex: 1,
+    gap: 4
+  },
+  catalogCardTitle: {
+    color: theme.colors.textPrimary
+  },
+  catalogCardBody: {
+    color: theme.colors.textSecondary,
+    lineHeight: 18
+  },
   infoCard: {
     backgroundColor: theme.colors.deckInk,
     borderRadius: theme.spacing.radii.card,

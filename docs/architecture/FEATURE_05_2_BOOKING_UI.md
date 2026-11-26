@@ -30,8 +30,8 @@ mobile/app/booking/
 ```
 
 ### Route Descriptions:
-- **`/booking` (Landing)**: Entry hub providing context on interplanetary transit ticketing, real-time readiness status, and quick return navigation to Journey or Home.
-- **`/booking/catalog`**: Filterable search screen querying `TransitInventoryProvider`.
+- **`/booking` (Landing)**: Entry hub providing context on interplanetary transit ticketing, real-time readiness status, quick link to verified catalog, and return navigation to Journey or Home.
+- **`/booking/catalog`**: Filterable search screen querying `TransitInventoryProvider` with transit mode filtering, search keyword querying, and departure sorting.
 - **`/booking/departure/[departureId]`**: Detailed view of verified departures with passenger selection (1–9) and authoritative fare quotation.
 - **`/booking/review`**: Pre-booking summary reviewing departure, passengers, and fare quote expiry.
 
@@ -49,6 +49,28 @@ Located in `mobile/src/features/booking/components/`:
 | **`BookingEmptyState`** | Polished empty/degraded state with primary/secondary actions | `icon`, `title`, `message`, `actionLabel`, `onAction` |
 | **`DepartureCard`** | Presentation card for `BookableDeparture` | Origin/Destination, timestamps, operator badge, status dot |
 | **`FareDisplay`** | Authoritative quotation component formatted from minor units | Minor-to-major currency conversion, expiration time, passenger count |
+
+---
+
+## 4. Trip Catalog & Query Architecture (Task 05.2.2)
+
+The Trip Catalog screen (`/booking/catalog`) queries the configured `TransitInventoryProvider`:
+
+1. **`useTripCatalog` Hook**:
+   - Manages asynchronous queries with an unmount-safe and stale-response guard (`activeRequestIdRef`).
+   - Strictly enforces that only `inventorySource === 'operator_verified'` departures are exposed to the client catalog.
+   - Provides client-side multi-mode filtering (`All Modes`, `Maglev`, `Hyperloop`, `Bus`, `Air`), date filtering, and case-insensitive keyword searching across origin, destination, service identifier, and operator ID.
+   - Offers sorting by `earliest` departure time, `latest` departure time, or travel `duration`.
+   - Defaults safely to `UnavailableInventoryProvider`, returning typed degraded states and zero synthesized departures when live integrations are absent.
+
+2. **Catalog Presentation & UX**:
+   - Renders departures through an accessible `FlatList` with `DepartureCard` items.
+   - Distinct, truthful empty states for:
+     - Loading: active indicator with accessible progress label.
+     - Unavailable Provider: informative banner indicating unconfigured live inventory.
+     - Empty Corridor: explicit "No Scheduled Departures" message with refresh capability.
+     - Filter Mismatch: clear message offering a single-tap "Clear Filters" action.
+
 
 ---
 
