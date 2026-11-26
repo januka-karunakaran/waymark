@@ -283,3 +283,23 @@ To maintain absolute security and truth in user experiences:
 ### 16.5 Future Integration Handoff
 - **Feature 05.2**: Will bind UI components (departure cards, seat pickers) directly to `TransitInventoryProvider` and `FareQuoteProvider`, displaying appropriate "Service Not Configured" or "Inventory Unavailable" states gracefully without crashing or fabricating mock data.
 - **Feature 05.3**: Will replace unavailable adapters with authenticated Supabase Edge Functions / Postgres RPC endpoints that verify operator credentials server-side and lock seat inventory atomically.
+
+---
+
+## 17. Reservation Database & Transaction Foundation (Task 05.1.3)
+
+### 17.1 Database Schema Architecture
+The booking data foundation is implemented in `supabase/migrations/20261126160000_waymark_booking_foundation.sql`:
+- `public.bookable_departures`: Public catalog of operational departures with arrival/departure ordering checks.
+- `public.departure_inventory`: Real-time capacity ledger with database-level invariant `(allocated_capacity + held_capacity) <= total_capacity`.
+- `public.booking_reservations`: Private traveler reservations partitioned by `auth.uid() = user_id`, with passenger bounds (1–9), integer minor-unit monetary integrity, and ISO 4217 currency constraints.
+- `public.booking_idempotency_records`: Per-user unique operation idempotency ledger.
+
+### 17.2 Row Level Security (RLS) & Client Write Denial
+- Public catalog tables (`bookable_departures`, `departure_inventory`) are readable by `anon` and `authenticated` roles, but direct client writes are forbidden.
+- Private booking tables (`booking_reservations`, `booking_idempotency_records`) grant `SELECT` access strictly to authenticated owners (`auth.uid() = user_id`).
+- Direct client `INSERT`, `UPDATE`, and `DELETE` permissions are revoked to prevent forged prices, fabricated confirmations, or unearned ticket issuance.
+- All transactional state changes are architected for server-side RPC execution in Feature 05.3.
+
+### 17.3 Security Reference
+For complete RLS policy matrices, database constraints, double-booking prevention models, and audit logs, consult `docs/security/FEATURE_05_BOOKING_SECURITY.md`.
