@@ -9,3 +9,4 @@ export * from './BookingStatusNotice';
 export * from './BookingEmptyState';
 export * from './DepartureCard';
 export * from './FareDisplay';
+export * from './PassengerSelector';

@@ -71,18 +71,37 @@ The Trip Catalog screen (`/booking/catalog`) queries the configured `TransitInve
      - Empty Corridor: explicit "No Scheduled Departures" message with refresh capability.
      - Filter Mismatch: clear message offering a single-tap "Clear Filters" action.
 
+---
+
+## 5. Departure Details, Passenger Selection & Fare Review (Task 05.2.3)
+
+### Route Implementations:
+- **`/booking/departure/[departureId]`**:
+  - Validates departure identifier and queries `TransitInventoryProvider.getDeparture(departureId)` and `checkAvailability(departureId)`.
+  - Rejects unverified sample data (`inventorySource !== 'operator_verified'`).
+  - Provides interactive `PassengerSelector` bounded between 1 and 9 passengers.
+  - Integrates `useFareQuote` hook to obtain authoritative server quotes in integer minor units.
+  - Automatically invalidates existing quotes on passenger count or fare class changes.
+  - Provides "Continue to Review" CTA once valid departure, capacity, and active quote are verified.
+
+- **`/booking/review`**:
+  - In-memory pre-booking summary populated via `BookingReviewContext`.
+  - Zero URL parameter pollution: no fare amounts, currencies, user emails, or tokens in route parameters.
+  - Validates quote expiration timestamp using `isFareQuoteExpired`.
+  - Guarded against direct-link access (renders empty state with return to catalog).
+  - Explicitly demarcates future functionality with disabled "Reservations Coming Soon" button (no simulated booking records, fake IDs, or payment checkout).
 
 ---
 
-## 4. Entry Points & Journey Navigation
+## 6. Entry Points & Journey Navigation
 
 - **Contextual Discovery in Journey**: An understated secondary action (`Explore Tickets`) is provided within the Journey destination context card.
 - **Privacy Preservation**: The route transition `/booking` carries zero private parameters (no saved place strings, coordinates, or user tokens).
-- **Guest Access**: Guest users may explore the booking landing screen and public catalog without authentication challenges. Authentication will only be enforced when initiating a reservation in Feature 05.3.
+- **Guest Access**: Guest users may explore the booking landing screen, public catalog, departure details, and pre-booking review without authentication challenges. Authentication will only be enforced when initiating a reservation in Feature 05.3.
 
 ---
 
-## 5. Security & Product Demarcation
+## 7. Security & Product Demarcation
 
 1. **No Client-Controlled Pricing**: The UI components strictly format authoritative quotes (`FareQuote`) issued by trusted providers.
 2. **Readiness Truthfulness**: When `TransitInventoryProvider` reports `not_configured`, the UI explicitly displays "Ticketing Engine Inactive" and "Reservations Coming Soon".
