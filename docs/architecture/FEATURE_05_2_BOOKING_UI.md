@@ -87,7 +87,7 @@ The Trip Catalog screen (`/booking/catalog`) queries the configured `TransitInve
 - **`/booking/review`**:
   - In-memory pre-booking summary populated via `BookingReviewContext`.
   - Zero URL parameter pollution: no fare amounts, currencies, user emails, or tokens in route parameters.
-  - Validates quote expiration timestamp using `isFareQuoteExpired`.
+  - Active expiration scheduling: automatically schedules a re-render/invalidation when `fareQuote.expiresAt` is reached, preventing stale UI state from being considered valid.
   - Guarded against direct-link access (renders empty state with return to catalog).
   - Explicitly demarcates future functionality with disabled "Reservations Coming Soon" button (no simulated booking records, fake IDs, or payment checkout).
 
@@ -106,3 +106,11 @@ The Trip Catalog screen (`/booking/catalog`) queries the configured `TransitInve
 1. **No Client-Controlled Pricing**: The UI components strictly format authoritative quotes (`FareQuote`) issued by trusted providers.
 2. **Readiness Truthfulness**: When `TransitInventoryProvider` reports `not_configured`, the UI explicitly displays "Ticketing Engine Inactive" and "Reservations Coming Soon".
 3. **No Fabricated Confirmations**: The UI never produces fake QR codes, confirmation numbers, or simulated payment receipts.
+
+---
+
+## 8. Final QA & Feature 05.3 Handoff (Task 05.2.4)
+
+Feature 05.2 is **CODE COMPLETE** with 100% passing automated quality gates:
+- See full test execution and security analysis in `docs/qa/FEATURE_05_2_BOOKING_UI_QA.md`.
+- Handoff ready for **Feature 05.3 — Reservation Engine, Inventory Allocation & Booking Lifecycle**.
