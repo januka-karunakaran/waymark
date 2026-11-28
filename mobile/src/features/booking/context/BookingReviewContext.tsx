@@ -9,7 +9,7 @@
  * 4. Automatically clears when departure changes, passenger count changes, or quote expires.
  */
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { BookableDeparture } from '../types/bookingTypes';
 import { FareQuote, FareClass, isFareQuoteExpired } from '../types/fareTypes';
 
@@ -45,6 +45,39 @@ const BookingReviewContext = createContext<BookingReviewContextValue | undefined
 
 export const BookingReviewProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [reviewState, setReviewState] = useState<BookingReviewState>(defaultState);
+  const [tick, setTick] = useState<number>(0);
+
+  // Quote Expiry Timer: automatically schedules a re-render/invalidation when fareQuote reaches expiresAt
+  useEffect(() => {
+    if (!reviewState.fareQuote?.expiresAt) {
+      return;
+    }
+
+    const expiryMs = new Date(reviewState.fareQuote.expiresAt).getTime();
+    const nowMs = Date.now();
+    const delay = expiryMs - nowMs;
+
+    if (delay <= 0) {
+      // Already expired: trigger immediate update
+      setTick((t) => t + 1);
+      return;
+    }
+
+    // Schedule re-render exactly at expiration timestamp (clamped to 32-bit int)
+    const timeout = setTimeout(() => {
+      setTick((t) => t + 1);
+    }, Math.min(delay, 2147483647));
+
+    // Ensure timer does not prevent Node/Jest test processes from exiting cleanly
+    const unrefTimer = timeout as unknown as { unref?: () => void };
+    if (typeof unrefTimer.unref === 'function') {
+      unrefTimer.unref();
+    }
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [reviewState.fareQuote]);
 
   const setReviewSelection = useCallback(
     (params: {
@@ -89,7 +122,8 @@ export const BookingReviewProvider: React.FC<{ children: React.ReactNode }> = ({
       return false;
     }
     return true;
-  }, [reviewState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewState, tick]);
 
   const value = useMemo(
     () => ({
@@ -107,6 +141,7 @@ export const BookingReviewProvider: React.FC<{ children: React.ReactNode }> = ({
     </BookingReviewContext.Provider>
   );
 };
+
 
 export function useBookingReview(): BookingReviewContextValue {
   const context = useContext(BookingReviewContext);
