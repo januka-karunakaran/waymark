@@ -1,26 +1,38 @@
 /**
  * Waymark Mobile — Feature 05.3: Secure Reservation Engine & Booking Lifecycle
- * Task 05.3.1: Reservation Request Handler & Security Verification
+ * Task 05.3.2: Atomic Reservation Request Handler with Database Transaction Enforcement
+ *
+ * Security & Integrity Guarantees:
+ * 1. Zero uncommitted reservations: provider validation alone CANNOT produce a successful hold.
+ * 2. Mandates atomic PostgreSQL transaction execution via ReservationTransactionCoordinator.
+ * 3. Booking record and UUID originate strictly from committed database state.
+ * 4. Fails closed with NOT_CONFIGURED if database transaction engine is unconfigured.
  */
 
 import {
-  ReservationRequestPayload,
   BackendApiResponse,
   AuthoritativeBookingRecord
 } from '../types';
-import { validateReservationPayload } from '../validation/reservationValidation';
+import {
+  validateReservationPayload,
+  calculateRequestFingerprint
+} from '../validation/reservationValidation';
 import { ServerFareAuthority } from '../services/fareAuthority';
 import { ServerOperatorAuthority } from '../services/operatorAuthority';
+import {
+  ReservationTransactionCoordinator,
+  UnconfiguredReservationTransactionCoordinator
+} from '../services/databaseTransaction';
 
 export interface ReservationHandlerContext {
   authenticatedUserId: string;
   fareAuthority: ServerFareAuthority;
   operatorAuthority: ServerOperatorAuthority;
-  // Optional booking store for testing / in-memory ledger
+  transactionCoordinator?: ReservationTransactionCoordinator;
   bookingStore?: Map<string, AuthoritativeBookingRecord>;
 }
 
-export const DEFAULT_HOLD_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+export const DEFAULT_HOLD_DURATION_SECONDS = 900; // 15 minutes
 
 export async function handleReservationRequest(
   rawPayload: unknown,
@@ -83,39 +95,78 @@ export async function handleReservationRequest(
   const authoritativeQuote = fareOutcome.authoritativeQuote;
 
   // 5. Authoritative Pricing Calculation (Never trusting client inputs)
-  // Total minor units is authoritatively derived from the verified quote
   const totalAmountMinorUnits = authoritativeQuote.amountMinorUnits;
   const currency = authoritativeQuote.currency;
 
-  // 6. Hold Expiration Calculation (Server-controlled timestamp)
+  // 6. Database Transaction Coordinator Gate
+  // CRITICAL REMEDIATION: Provider validation alone CANNOT create a reservation.
+  // Must execute atomic PostgreSQL transaction.
+  const coordinator = context.transactionCoordinator ?? new UnconfiguredReservationTransactionCoordinator();
+  if (!coordinator.isConfigured()) {
+    return {
+      success: false,
+      error: {
+        code: 'NOT_CONFIGURED',
+        message: 'Database reservation transaction engine is not configured. Live capacity allocation is unavailable.'
+      }
+    };
+  }
+
+  // 7. Calculate canonical deterministic request hash for idempotency checking
+  const requestHash = calculateRequestFingerprint({
+    departureId,
+    passengerCount,
+    fareQuoteId,
+    currency,
+    totalAmountMinorUnits
+  });
+
+  // Calculate hold duration bounded by quote expiration
   const serverNow = Date.now();
   const quoteExpiresAtMs = new Date(authoritativeQuote.expiresAt).getTime();
-  const maxHoldMs = serverNow + DEFAULT_HOLD_DURATION_MS;
-  const effectiveHoldExpiresMs = Math.min(maxHoldMs, quoteExpiresAtMs);
-  const holdExpiresAtIso = new Date(effectiveHoldExpiresMs).toISOString();
+  const remainingQuoteSeconds = Math.max(0, Math.floor((quoteExpiresAtMs - serverNow) / 1000));
+  const effectiveDurationSeconds = Math.min(DEFAULT_HOLD_DURATION_SECONDS, remainingQuoteSeconds);
 
-  // 7. Construct Authoritative Held Booking Record
-  const bookingRecord: AuthoritativeBookingRecord = {
-    id: `res-${idempotencyKey.slice(0, 12)}-${Date.now().toString(36)}`,
+  if (effectiveDurationSeconds <= 0) {
+    return {
+      success: false,
+      error: {
+        code: 'FARE_EXPIRED',
+        message: 'Authoritative fare quote has expired prior to reservation allocation.'
+      }
+    };
+  }
+
+  // 8. Execute Atomic PostgreSQL Transaction (lock inventory, check capacity, insert held reservation, write idempotency)
+  const transactionOutcome = await coordinator.executeReservationHold({
     userId: context.authenticatedUserId,
     departureId,
     passengerCount,
     fareQuoteId,
     totalAmountMinorUnits,
     currency,
-    status: 'held',
     idempotencyKey,
-    holdExpiresAt: holdExpiresAtIso,
-    createdAt: new Date(serverNow).toISOString(),
-    updatedAt: new Date(serverNow).toISOString()
-  };
+    requestHash,
+    holdDurationSeconds: effectiveDurationSeconds
+  });
 
-  if (context.bookingStore) {
-    context.bookingStore.set(bookingRecord.id, bookingRecord);
+  if (!transactionOutcome.success || !transactionOutcome.booking) {
+    return {
+      success: false,
+      error: {
+        code: transactionOutcome.errorCode || 'SERVICE_UNAVAILABLE',
+        message: transactionOutcome.errorMessage || 'Database reservation transaction failed.'
+      }
+    };
   }
 
+  if (context.bookingStore) {
+    context.bookingStore.set(transactionOutcome.booking.id, transactionOutcome.booking);
+  }
+
+  // 9. Return strictly the committed database reservation outcome
   return {
     success: true,
-    data: bookingRecord
+    data: transactionOutcome.booking
   };
 }

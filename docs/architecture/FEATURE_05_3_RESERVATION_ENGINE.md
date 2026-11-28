@@ -4,10 +4,10 @@
 **Document:** `docs/architecture/FEATURE_05_3_RESERVATION_ENGINE.md`
 **Milestone:** Feature 05 — Ticketing, Booking & Payments
 **Subfeature:** 05.3 — Secure Reservation Engine, Inventory Allocation & Booking Lifecycle
-**Task:** 05.3.1 — Secure Reservation API & Backend Foundation
+**Task:** 05.3.2 — Atomic Inventory Holds, PostgreSQL Transactions & Idempotency
 **Owner:** Sathu (`Sathurjanv23` / `sathurjanv.23@uom.lk`)
 **Reviewer:** Janu (`januka-karunakaran` / `karunakaranj.23@uom.lk`)
-**Status:** DRAFTED · TASK 05.3.1 CODE COMPLETE (LIVE OPERATOR PENDING)
+**Status:** CODE COMPLETE · TASK 05.3.2 VERIFIED (LIVE OPERATOR PENDING)
 **Date:** November 28, 2026
 
 ---
@@ -45,7 +45,7 @@ flowchart TD
     EdgeFn -->|3. Verify Token & Resolve auth.uid()| Auth
     EdgeFn -->|4. Verify Departure & Inventory Source| OpAuth
     EdgeFn -->|5. Validate Authoritative Quote & Pricing| FareAuth
-    EdgeFn -.->|6. Atomic Inventory Hold (Task 05.3.2)| DB
+    EdgeFn -->|6. Atomic PostgreSQL RPC (create_reservation_hold)| DB
     EdgeFn -->|7. Authoritative Hold Response| Adapter
     Adapter -->|8. Typed BookingResult| Client
 ```
@@ -115,4 +115,4 @@ The mobile client interacts with the backend via `RemoteBookingService`:
 > 1. **Live Transport Operators:** The repository lacks contracted integration with live railway, airline, or bus dispatchers.
 > 2. **Authoritative Fare Authority:** Real-time dynamic quotation engines are unconfigured in production.
 > 3. **Production Booking Status:** The reservation engine is architecturally established and verified with authorized test fixtures, but live production reservations remain **safely disabled** via `UnavailableBookingService`.
-> 4. **Feature 05.3.2 Prerequisite:** Atomic inventory hold locks and database transaction procedures will be implemented in Task 05.3.2.
+> 4. **Task 05.3.2 Code Complete:** Atomic inventory hold locks and database transaction procedures are implemented in `supabase/migrations/20261128100000_waymark_atomic_reservation_holds.sql` and coordinated via `ReservationTransactionCoordinator`. Next task: 05.3.3.

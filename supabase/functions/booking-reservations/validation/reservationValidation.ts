@@ -213,3 +213,28 @@ export function validateCancelPayload(
 
   return { isValid: true, data: { bookingId: lookupCheck.data.bookingId, reason } };
 }
+
+/**
+ * Computes a deterministic canonical request fingerprint for idempotency tracking.
+ */
+export function calculateRequestFingerprint(params: {
+  departureId: string;
+  passengerCount: number;
+  fareQuoteId: string;
+  currency: string;
+  totalAmountMinorUnits: number;
+}): string {
+  const canonical = `${params.departureId.trim()}:${params.passengerCount}:${params.fareQuoteId.trim()}:${params.currency.trim().toUpperCase()}:${params.totalAmountMinorUnits}`;
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < canonical.length; i++) {
+    const ch = canonical.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  const p1 = (h1 >>> 0).toString(16).padStart(8, '0');
+  const p2 = (h2 >>> 0).toString(16).padStart(8, '0');
+  return `req_${p1}${p2}`;
+}

@@ -9,12 +9,14 @@ import { Ticket } from '../types/ticketTypes';
 export type BookingErrorCode =
   | 'NOT_CONFIGURED'
   | 'INVENTORY_UNAVAILABLE'
+  | 'INSUFFICIENT_CAPACITY'
   | 'FARE_EXPIRED'
   | 'INVALID_REQUEST'
   | 'UNAUTHORIZED'
   | 'BOOKING_NOT_FOUND'
   | 'INVALID_STATE_TRANSITION'
   | 'IDEMPOTENCY_CONFLICT'
+  | 'TRANSACTION_FAILED'
   | 'SERVICE_UNAVAILABLE';
 
 export interface BookingError {
