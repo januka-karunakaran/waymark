@@ -35,6 +35,10 @@ import {
   RegistryOperatorAuthority
 } from '../../../../../supabase/functions/booking-reservations/services/operatorAuthority';
 import {
+  TestDoubleReservationCoordinator,
+  UnconfiguredReservationTransactionCoordinator
+} from '../../../../../supabase/functions/booking-reservations/services/databaseTransaction';
+import {
   AuthoritativeBookingRecord
 } from '../../../../../supabase/functions/booking-reservations/types';
 import { BookableDeparture } from '../types/bookingTypes';
@@ -102,6 +106,7 @@ describe('Feature 05.3.1 — Backend Reservation Engine Foundation & Security Te
 
   let fareAuthority: RegistryFareAuthority;
   let operatorAuthority: RegistryOperatorAuthority;
+  let transactionCoordinator: TestDoubleReservationCoordinator;
   let bookingStore: Map<string, AuthoritativeBookingRecord>;
   let testContext: EdgeFunctionContext;
 
@@ -111,11 +116,17 @@ describe('Feature 05.3.1 — Backend Reservation Engine Foundation & Security Te
       validVerifiedDeparture,
       sampleUnverifiedDeparture
     ]);
+    transactionCoordinator = new TestDoubleReservationCoordinator({
+      initialInventories: {
+        'dep-colombo-kandy-101': { totalCapacity: 50, allocatedCapacity: 0, heldCapacity: 0 }
+      }
+    });
     bookingStore = new Map();
 
     testContext = {
       fareAuthority,
       operatorAuthority,
+      transactionCoordinator,
       bookingStore,
       jwtVerifier: mockAuthorizedJwtVerifier
     };
@@ -442,7 +453,7 @@ describe('Feature 05.3.1 — Backend Reservation Engine Foundation & Security Te
         unconfiguredContext
       );
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(503);
       const parsed = JSON.parse(response.body);
       expect(parsed.success).toBe(false);
       expect(parsed.error.code).toBe('NOT_CONFIGURED');
@@ -471,7 +482,7 @@ describe('Feature 05.3.1 — Backend Reservation Engine Foundation & Security Te
         unconfiguredContext
       );
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(503);
       const parsed = JSON.parse(response.body);
       expect(parsed.success).toBe(false);
       expect(parsed.error.code).toBe('NOT_CONFIGURED');
@@ -531,6 +542,36 @@ describe('Feature 05.3.1 — Backend Reservation Engine Foundation & Security Te
       const parsed = JSON.parse(response.body);
       expect(parsed.success).toBe(false);
       expect(parsed.error.code).toBe('FARE_EXPIRED');
+    });
+
+    it('TC-05.3.2-REGR-01: provider validation alone CANNOT create a reservation when transaction engine is unconfigured (fails closed)', async () => {
+      const unconfiguredContext: EdgeFunctionContext = {
+        ...testContext,
+        transactionCoordinator: new UnconfiguredReservationTransactionCoordinator()
+      };
+
+      const response = await processReservationHttpRequest(
+        {
+          method: 'POST',
+          headers: { authorization: 'Bearer valid-user-token' },
+          rawBody: JSON.stringify({
+            action: 'reserve',
+            payload: {
+              departureId: 'dep-colombo-kandy-101',
+              passengerCount: 2,
+              fareQuoteId: 'quote-rail-2026-001',
+              idempotencyKey: 'idemp-valid-key-123456'
+            }
+          })
+        },
+        unconfiguredContext
+      );
+
+      expect(response.status).toBe(503);
+      const parsed = JSON.parse(response.body);
+      expect(parsed.success).toBe(false);
+      expect(parsed.error.code).toBe('NOT_CONFIGURED');
+      expect(parsed.error.message).toMatch(/Database reservation transaction engine is not configured/i);
     });
   });
 

@@ -17,6 +17,10 @@ import {
   ServerOperatorAuthority,
   UnconfiguredOperatorAuthority
 } from './services/operatorAuthority';
+import {
+  ReservationTransactionCoordinator,
+  UnconfiguredReservationTransactionCoordinator
+} from './services/databaseTransaction';
 import { handleReservationRequest } from './handlers/reservationHandler';
 import { handleBookingLookup } from './handlers/bookingHandler';
 import { handleCancellation } from './handlers/cancellationHandler';
@@ -31,6 +35,7 @@ export const CORS_HEADERS = {
 export interface EdgeFunctionContext {
   fareAuthority?: ServerFareAuthority;
   operatorAuthority?: ServerOperatorAuthority;
+  transactionCoordinator?: ReservationTransactionCoordinator;
   bookingStore?: Map<string, AuthoritativeBookingRecord>;
   jwtVerifier?: (authHeader: string | null) => Promise<{ userId: string | null; error?: string }>;
 }
@@ -115,6 +120,7 @@ export async function processReservationHttpRequest(
 
     const fareAuthority = contextOverrides?.fareAuthority ?? new UnconfiguredFareAuthority();
     const operatorAuthority = contextOverrides?.operatorAuthority ?? new UnconfiguredOperatorAuthority();
+    const transactionCoordinator = contextOverrides?.transactionCoordinator ?? new UnconfiguredReservationTransactionCoordinator();
     const bookingStore = contextOverrides?.bookingStore;
 
     // Readiness action is public
@@ -122,7 +128,7 @@ export async function processReservationHttpRequest(
       const outcome = handleReadiness({
         fareAuthority,
         operatorAuthority,
-        isDatabaseConfigured: false
+        transactionCoordinator
       });
       return { status: 200, headers: jsonHeaders, body: JSON.stringify(outcome) };
     }
@@ -151,9 +157,20 @@ export async function processReservationHttpRequest(
           authenticatedUserId,
           fareAuthority,
           operatorAuthority,
+          transactionCoordinator,
           bookingStore
         });
-        const status = result.success ? 201 : result.error.code === 'UNAUTHORIZED' ? 401 : 400;
+        const status = result.success
+          ? 201
+          : result.error.code === 'UNAUTHORIZED'
+          ? 401
+          : result.error.code === 'NOT_CONFIGURED'
+          ? 503
+          : result.error.code === 'IDEMPOTENCY_CONFLICT' || result.error.code === 'INSUFFICIENT_CAPACITY'
+          ? 409
+          : result.error.code === 'TRANSACTION_FAILED' || result.error.code === 'SERVICE_UNAVAILABLE'
+          ? 500
+          : 400;
         return { status, headers: jsonHeaders, body: JSON.stringify(result) };
       }
 

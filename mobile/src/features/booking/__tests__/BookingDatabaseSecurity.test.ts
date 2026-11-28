@@ -24,15 +24,29 @@ describe('Feature 05.1.3 — Booking Database, RLS & Transaction Security Verifi
     rootDir,
     'supabase/tests/feature_05_1_booking_security.test.sql'
   );
+  const atomicHoldMigrationPath = path.join(
+    rootDir,
+    'supabase/migrations/20261128100000_waymark_atomic_reservation_holds.sql'
+  );
+  const atomicHoldTestPath = path.join(
+    rootDir,
+    'supabase/tests/feature_05_3_atomic_reservation_holds.test.sql'
+  );
 
   let migrationSql: string;
   let rlsTestSql: string;
+  let atomicHoldMigrationSql: string;
+  let atomicHoldTestSql: string;
 
   beforeAll(() => {
     expect(fs.existsSync(migrationPath)).toBe(true);
     expect(fs.existsSync(rlsTestPath)).toBe(true);
+    expect(fs.existsSync(atomicHoldMigrationPath)).toBe(true);
+    expect(fs.existsSync(atomicHoldTestPath)).toBe(true);
     migrationSql = fs.readFileSync(migrationPath, 'utf-8');
     rlsTestSql = fs.readFileSync(rlsTestPath, 'utf-8');
+    atomicHoldMigrationSql = fs.readFileSync(atomicHoldMigrationPath, 'utf-8');
+    atomicHoldTestSql = fs.readFileSync(atomicHoldTestPath, 'utf-8');
   });
 
   // ==========================================================================
@@ -157,6 +171,57 @@ describe('Feature 05.1.3 — Booking Database, RLS & Transaction Security Verifi
       expect(rlsTestSql).toMatch(/CONST-03 \[Passenger Count\]: Rejects passenger count below minimum \(0\)/i);
       expect(rlsTestSql).toMatch(/CONST-04 \[Passenger Count\]: Rejects passenger count above maximum \(10\)/i);
       expect(rlsTestSql).toMatch(/CONST-05 \[Monetary Bounds\]: Rejects negative monetary amounts/i);
+    });
+  });
+
+  // ==========================================================================
+  // SECTION 4: TASK 05.3.2 ATOMIC RESERVATION HOLD RPC & HARDENING AUDIT
+  // ==========================================================================
+  describe('4. Task 05.3.2 Atomic Reservation Hold Migration & Security Audit', () => {
+    it('TC-05.3.2-DB-01: verifies create_reservation_hold function uses security definer with safe search_path', () => {
+      expect(atomicHoldMigrationSql).toMatch(/create or replace function public\.create_reservation_hold/i);
+      expect(atomicHoldMigrationSql).toMatch(/security definer/i);
+      expect(atomicHoldMigrationSql).toMatch(/set search_path = public, pg_temp/i);
+    });
+
+    it('TC-05.3.2-DB-02: verifies EXECUTE privilege is strictly revoked from public, anon, and authenticated', () => {
+      expect(atomicHoldMigrationSql).toMatch(
+        /revoke all on function public\.create_reservation_hold\([\s\S]*?\) from public, anon, authenticated;/i
+      );
+    });
+
+    it('TC-05.3.2-DB-03: verifies EXECUTE privilege is granted strictly to service_role', () => {
+      expect(atomicHoldMigrationSql).toMatch(
+        /grant execute on function public\.create_reservation_hold\([\s\S]*?\) to service_role;/i
+      );
+    });
+
+    it('TC-05.3.2-DB-04: verifies row-level inventory locking via SELECT ... FOR UPDATE', () => {
+      expect(atomicHoldMigrationSql).toMatch(/select \* into v_inventory\s+from public\.departure_inventory\s+where departure_id = p_departure_id\s+for update;/i);
+    });
+
+    it('TC-05.3.2-DB-05: verifies capacity invariant enforcement check in plpgsql function', () => {
+      expect(atomicHoldMigrationSql).toMatch(/v_available := v_inventory\.total_capacity - v_inventory\.allocated_capacity - v_inventory\.held_capacity;/i);
+      expect(atomicHoldMigrationSql).toMatch(/if v_available < p_passenger_count then/i);
+      expect(atomicHoldMigrationSql).toMatch(/'error_code', 'INVENTORY_UNAVAILABLE'/i);
+    });
+
+    it('TC-05.3.2-DB-06: verifies transactional idempotency replay check in plpgsql function', () => {
+      expect(atomicHoldMigrationSql).toMatch(/select \* into v_existing_idempotency\s+from public\.booking_idempotency_records/i);
+      expect(atomicHoldMigrationSql).toMatch(/if v_existing_idempotency\.request_hash = p_request_hash then/i);
+      expect(atomicHoldMigrationSql).toMatch(/'is_idempotent_replay', true/i);
+      expect(atomicHoldMigrationSql).toMatch(/'error_code', 'IDEMPOTENCY_CONFLICT'/i);
+    });
+
+    it('TC-05.3.2-DB-07: verifies unverified / sample_data departure rejection at database layer', () => {
+      expect(atomicHoldMigrationSql).toMatch(/if v_departure\.inventory_source != 'operator_verified' then/i);
+      expect(atomicHoldMigrationSql).toMatch(/'error_code', 'INVENTORY_UNAVAILABLE'/i);
+    });
+
+    it('TC-05.3.2-DB-08: verifies pgTAP atomic hold test suite executes in transaction with rollback and 32 assertions', () => {
+      expect(atomicHoldTestSql).toMatch(/^begin;/m);
+      expect(atomicHoldTestSql).toMatch(/select plan\(32\);/i);
+      expect(atomicHoldTestSql).toMatch(/rollback;$/m);
     });
   });
 });

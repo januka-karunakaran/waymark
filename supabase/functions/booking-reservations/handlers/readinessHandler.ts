@@ -6,10 +6,12 @@
 import { BackendApiResponse, BackendReadiness } from '../types';
 import { ServerFareAuthority } from '../services/fareAuthority';
 import { ServerOperatorAuthority } from '../services/operatorAuthority';
+import { ReservationTransactionCoordinator } from '../services/databaseTransaction';
 
 export interface ReadinessHandlerContext {
   fareAuthority: ServerFareAuthority;
   operatorAuthority: ServerOperatorAuthority;
+  transactionCoordinator?: ReservationTransactionCoordinator;
   isDatabaseConfigured?: boolean;
 }
 
@@ -18,7 +20,7 @@ export function handleReadiness(
 ): BackendApiResponse<BackendReadiness> {
   const isFareReady = context.fareAuthority.isConfigured();
   const isOperatorReady = context.operatorAuthority.isConfigured();
-  const isDbReady = Boolean(context.isDatabaseConfigured);
+  const isDbReady = Boolean(context.transactionCoordinator?.isConfigured() || context.isDatabaseConfigured);
 
   return {
     success: true,
@@ -27,7 +29,7 @@ export function handleReadiness(
       operatorAuthority: isOperatorReady ? 'ready' : 'pending',
       fareAuthority: isFareReady ? 'ready' : 'pending',
       databaseTransactions: isDbReady ? 'ready' : 'pending',
-      version: '05.3.1'
+      version: '05.3.2'
     }
   };
 }
